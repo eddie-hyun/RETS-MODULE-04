@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RETS-MODULE-04 사용자 가이드 — 도메인 모델링 및 용어 사전 구축 도구</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23F97316'/%3E%3Ctext x='50%25' y='54%25' font-size='14' font-weight='700' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif'%3EM4%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* RETS Design System tokens (ref: 02b_design_system_ref.html) */
+    :root {
+      --brand-500:#F97316; --brand-400:#FB923C; --brand-600:#EA6C0A;
+      --brand-700:#C2560B; --brand-50:#FFF7ED; --brand-100:#FFEDD5;
+      --error-500:#8c3131; --error-50:#FEF2F2; --error-200:#FECACA; --error-700:#6b2424;
+      --warning-500:#D97706; --warning-50:#FFFBEB; --warning-200:#FDE68A; --warning-700:#92400E;
+      --success-500:#1CB357; --success-50:#F0FDF4; --success-200:#BBF7D0; --success-700:#15803D;
+      --info-500:#3375E8; --info-50:#EFF6FF; --info-200:#BFDBFE; --info-700:#1D4ED8;
+      --bg:#FFFFFF; --surface:#F9FAFB; --surface-2:#F3F4F6;
+      --border:#E5E7EB; --border-md:#D1D5DB;
+      --text-pri:#111827; --text-sec:#6B7280; --text-dis:#9CA3AF;
+      --header-bg:rgba(240,242,245,0.72);
+      --radius-sm:4px; --radius-md:6px; --radius-lg:8px;
+      --t:0.15s ease;
+    }
+    [data-theme="dark"] {
+      --brand-500:#F97316; --brand-400:#FB923C; --brand-600:#EA6C0A;
+      --brand-700:#FED7AA; --brand-50:#431407; --brand-100:#7C2D12;
+      --error-500:#F87171; --error-50:#450A0A; --error-200:#991B1B; --error-700:#FCA5A5;
+      --warning-500:#FBBF24; --warning-50:#451A03; --warning-200:#92400E; --warning-700:#FDE68A;
+      --success-500:#3DD171; --success-50:#052E16; --success-200:#166534; --success-700:#86EFAC;
+      --info-500:#5299F0; --info-50:#172554; --info-200:#1E40AF; --info-700:#93C5FD;
+      --bg:#101111; --surface:#1c1d1d; --surface-2:#262727;
+      --border:#303232; --border-md:#404242;
+      --text-pri:#F8FAFC; --text-sec:#94A3B8; --text-dis:#475569;
+      --header-bg:rgba(14,35,35,0.80);
+    }
+
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;}
+    body{
+      font-family:'Noto Sans KR',sans-serif;
+      font-size:14px; line-height:1.7; letter-spacing:-0.04em;
+      background:var(--bg); color:var(--text-pri);
+      transition:background var(--t),color var(--t);
+    }
+
+    code{
+      font-family:Consolas,'Courier New',monospace;
+      font-size:0.78em; color:#374151;
+      background:var(--surface-2);
+      padding:1px 6px; border-radius:3px;
+      letter-spacing:0; word-break:break-all;
+    }
+    [data-theme="dark"] code{ color:#9CA3AF; }
+    pre{
+      background:var(--surface-2); border:1px solid var(--border);
+      border-radius:var(--radius-md); padding:14px 16px;
+      font-family:Consolas,'Courier New',monospace; font-size:12px;
+      letter-spacing:0; line-height:1.55;
+      overflow-x:auto; color:var(--text-pri);
+    }
+
+    /* Header */
+    .ug-header{
+      position:sticky; top:0; z-index:100;
+      background:var(--header-bg);
+      -webkit-backdrop-filter:blur(14px) saturate(160%);
+              backdrop-filter:blur(14px) saturate(160%);
+      border-bottom:1px solid var(--border);
+      padding:0 30px; height:52px;
+      display:flex; align-items:center;
+    }
+    .ug-header-left{ flex:1; display:flex; align-items:center; gap:10px; }
+    .ug-header-center{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .ug-header-right{ flex:1; display:flex; align-items:center; justify-content:flex-end; gap:8px; }
+    .module-badge{
+      background:#C2560B; color:#fff;
+      font-size:11px; font-weight:700;
+      padding:3px 8px; border-radius:var(--radius-sm);
+      letter-spacing:0.05em;
+    }
+    .ug-title{ font-size:15px; font-weight:700; }
+    .ug-title .sub{ font-size:13px; color:var(--text-sec); font-weight:400; margin-left:6px; }
+    .org-logo{
+      width:28px; height:28px; border-radius:6px;
+      background:var(--brand-500); color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:12px;
+    }
+    #theme-toggle{
+      width:34px; height:34px; border-radius:var(--radius-md);
+      border:1px solid var(--border-md); background:var(--surface);
+      color:var(--text-sec); cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px; transition:background var(--t);
+    }
+    #theme-toggle:hover{ background:var(--surface-2); }
+    .open-app-btn{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 14px; border-radius:var(--radius-md);
+      background:var(--brand-500); color:#fff;
+      border:1px solid var(--brand-500);
+      font-size:13px; font-weight:500;
+      text-decoration:none; cursor:pointer;
+    }
+    .open-app-btn:hover{ background:var(--brand-600); border-color:var(--brand-600); }
+
+    /* Layout: 사이드바 + 본문 */
+    .layout{
+      display:grid;
+      grid-template-columns:240px 1fr;
+      max-width:1200px; margin:0 auto;
+      min-height:calc(100vh - 52px);
+    }
+    aside.toc{
+      border-right:1px solid var(--border);
+      padding:24px 16px 60px;
+      position:sticky; top:52px; align-self:start;
+      max-height:calc(100vh - 52px); overflow:auto;
+    }
+    .toc-title{
+      font-size:11px; font-weight:700;
+      text-transform:uppercase; letter-spacing:0.08em;
+      color:var(--text-sec); margin-bottom:10px;
+    }
+    .toc a{
+      display:block; padding:6px 10px;
+      font-size:13px; color:var(--text-sec);
+      text-decoration:none;
+      border-radius:var(--radius-sm);
+      border-left:2px solid transparent;
+    }
+    .toc a:hover{ background:var(--surface); color:var(--text-pri); }
+    .toc a.active{
+      background:var(--brand-50); color:var(--brand-600);
+      border-left-color:var(--brand-500); font-weight:700;
+    }
+    .toc-sub{ padding-left:16px; }
+    .toc-sub a{ font-size:12px; padding:4px 10px; }
+
+    main.content{
+      padding:36px 40px 80px;
+      max-width:880px;
+    }
+
+    /* Hero */
+    .hero{
+      background:linear-gradient(135deg, var(--brand-50) 0%, var(--surface) 100%);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:32px 30px;
+      margin-bottom:30px;
+    }
+    [data-theme="dark"] .hero{
+      background:linear-gradient(135deg, var(--brand-50) 0%, var(--surface) 100%);
+    }
+    .hero h1{ font-size:20px; font-weight:700; letter-spacing:-0.04em; margin-bottom:6px; }
+    .hero p{ font-size:14px; color:var(--text-sec); line-height:1.7; }
+    .hero .meta{
+      margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 10px; border-radius:999px;
+      background:var(--bg); border:1px solid var(--border);
+      font-size:11px; color:var(--text-sec);
+    }
+    .pill .num{ font-weight:700; color:var(--brand-500); }
+
+    /* Sections */
+    section{ margin:38px 0; scroll-margin-top:64px; }
+    h2{
+      font-size:18px; font-weight:700; letter-spacing:-0.04em;
+      margin-bottom:6px; padding-bottom:8px;
+      border-bottom:1px solid var(--border);
+    }
+    h2 .num{ color:var(--brand-500); margin-right:8px; }
+    h3{ font-size:15px; font-weight:700; margin:18px 0 8px; }
+    h4{ font-size:13px; font-weight:700; margin:12px 0 6px; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.06em; }
+    p{ margin:8px 0; color:var(--text-pri); }
+    ul, ol{ padding-left:20px; margin:8px 0; }
+    li{ margin:4px 0; }
+
+    .lead{ color:var(--text-sec); font-size:14px; }
+
+    /* Cards */
+    .card{
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:16px 18px;
+      margin:12px 0;
+    }
+    .card-title{ font-weight:700; margin-bottom:6px; font-size:14px; }
+    .card-desc{ color:var(--text-sec); font-size:13px; }
+
+    .grid-2{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin:12px 0; }
+
+    /* Step numbered list */
+    ol.steps{ list-style:none; padding:0; counter-reset:step; }
+    ol.steps > li{
+      counter-increment:step; position:relative;
+      padding:12px 14px 12px 50px; margin-bottom:10px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-md);
+    }
+    ol.steps > li::before{
+      content:counter(step);
+      position:absolute; left:14px; top:12px;
+      width:24px; height:24px; border-radius:50%;
+      background:var(--brand-500); color:#fff;
+      font-weight:700; font-size:12px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    ol.steps > li strong{ display:block; margin-bottom:4px; font-size:13px; }
+    ol.steps > li .desc{ font-size:13px; color:var(--text-sec); }
+
+    /* Callouts */
+    .callout{
+      border-left:4px solid var(--info-500);
+      background:var(--info-50); color:var(--info-700);
+      padding:12px 14px; border-radius:0 var(--radius-md) var(--radius-md) 0;
+      margin:14px 0;
+    }
+    .callout.warn{ border-color:var(--warning-500); background:var(--warning-50); color:var(--warning-700); }
+    .callout.error{ border-color:var(--error-500); background:var(--error-50); color:var(--error-700); }
+    .callout.success{ border-color:var(--success-500); background:var(--success-50); color:var(--success-700); }
+    .callout strong{ display:block; margin-bottom:4px; font-size:13px; font-weight:700; }
+    .callout p{ margin:0; font-size:13px; color:inherit; opacity:0.9; }
+
+    /* Tables */
+    table.kv{
+      width:100%; border-collapse:collapse;
+      border:1px solid var(--border); border-radius:var(--radius-md);
+      overflow:hidden; margin:12px 0;
+      font-size:13px;
+    }
+    table.kv th{
+      background:var(--surface); padding:9px 12px;
+      text-align:left; font-weight:700; font-size:12px;
+      color:var(--text-sec);
+      border-bottom:1px solid var(--border); white-space:nowrap;
+    }
+    table.kv td{
+      padding:9px 12px;
+      border-bottom:1px solid var(--border);
+      color:var(--text-pri); vertical-align:top;
+    }
+    table.kv tr:last-child td{ border-bottom:none; }
+
+    /* Badge */
+    .badge{
+      display:inline-flex; align-items:center; gap:4px;
+      padding:2px 8px; border-radius:999px;
+      font-size:11px; font-weight:700; white-space:nowrap;
+    }
+    .badge-brand{ background:var(--brand-50); color:var(--brand-600); border:1px solid var(--brand-100); }
+    .badge-warning{ background:var(--warning-50); color:var(--warning-700); border:1px solid var(--warning-200); }
+    .badge-success{ background:var(--success-50); color:var(--success-700); border:1px solid var(--success-200); }
+    .badge-error{ background:var(--error-50); color:var(--error-700); border:1px solid var(--error-200); }
+    .badge-info{ background:var(--info-50); color:var(--info-700); border:1px solid var(--info-200); }
+    .badge-neutral{ background:var(--surface-2); color:var(--text-sec); border:1px solid var(--border); }
+
+    /* Mockup screen frame */
+    .mock{
+      border:1px solid var(--border); border-radius:var(--radius-lg);
+      overflow:hidden; background:var(--bg);
+      margin:14px 0; box-shadow:0 4px 16px rgba(0,0,0,0.04);
+    }
+    .mock-header{
+      display:flex; align-items:center; gap:10px;
+      padding:0 14px; height:44px;
+      background:var(--header-bg);
+      -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+      border-bottom:1px solid var(--border);
+      font-size:12px; color:var(--text-sec);
+    }
+    .mock-header .dots{ display:flex; gap:4px; }
+    .mock-header .dot{ width:10px; height:10px; border-radius:50%; }
+    .mock-header .dot.r{ background:#FF5F56; } .mock-header .dot.y{ background:#FFBD2E; } .mock-header .dot.g{ background:#27C93F; }
+    .mock-body{
+      padding:18px 16px; min-height:140px;
+      background:var(--surface);
+      font-size:12px; color:var(--text-sec);
+    }
+    .mock-row{
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:var(--radius-md); padding:8px 10px;
+      margin-bottom:6px; font-size:12px;
+    }
+    .mock-tag{
+      display:inline-block; padding:2px 8px; border-radius:4px;
+      background:var(--brand-500); color:#fff; font-size:10px; font-weight:700;
+      letter-spacing:0.04em;
+    }
+    .btn-mini{
+      display:inline-flex; align-items:center; gap:4px;
+      padding:3px 8px; border-radius:4px;
+      font-size:11px; font-weight:500;
+      background:var(--surface-2); color:var(--text-pri); border:1px solid var(--border);
+    }
+    .btn-mini.brand{ background:var(--brand-500); color:#fff; border-color:var(--brand-500); }
+    .btn-mini.danger{ background:var(--error-50); color:var(--error-500); border-color:var(--error-200); }
+
+    /* Keyboard key */
+    kbd{
+      font-family:Consolas,'Courier New',monospace;
+      font-size:11px; padding:2px 6px;
+      background:var(--surface-2); border:1px solid var(--border-md);
+      border-radius:4px; box-shadow:0 1px 0 var(--border);
+      color:var(--text-pri); letter-spacing:0;
+    }
+
+    /* FAQ accordion */
+    details{
+      border:1px solid var(--border); border-radius:var(--radius-md);
+      padding:10px 14px; margin:8px 0;
+      background:var(--surface);
+    }
+    details[open]{ background:var(--bg); }
+    details summary{
+      cursor:pointer; font-weight:700; font-size:13px;
+      list-style:none; outline:none;
+    }
+    details summary::-webkit-details-marker{ display:none; }
+    details summary::before{
+      content:'▸'; display:inline-block; width:18px;
+      transition:transform var(--t);
+      color:var(--brand-500);
+    }
+    details[open] summary::before{ transform:rotate(90deg); }
+    details .det-body{ margin-top:8px; padding-left:18px; color:var(--text-sec); font-size:13px; }
+
+    /* Footer */
+    footer{
+      margin-top:60px; padding-top:24px;
+      border-top:1px solid var(--border);
+      font-size:11px; color:var(--text-sec);
+      text-align:center;
+    }
+
+    /* Responsive */
+    @media (max-width:900px){
+      .layout{ grid-template-columns:1fr; }
+      aside.toc{
+        position:relative; max-height:none;
+        border-right:none; border-bottom:1px solid var(--border);
+        padding:14px 16px;
+      }
+      main.content{ padding:24px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====== HEADER ====== -->
+<header class="ug-header">
+  <div class="ug-header-left">
+    <span class="module-badge">RETS</span>
+    <div class="ug-title">사용자 가이드 <span class="sub">— MODULE-04 도메인 모델링</span></div>
+  </div>
+  <div class="ug-header-center">
+    <div class="org-logo" title="솔루션링크">SL</div>
+  </div>
+  <div class="ug-header-right">
+    <a class="open-app-btn" href="rets_module_04_07_app.html" target="_blank" rel="noopener">↗ 앱 실행</a>
+    <button id="theme-toggle" title="테마 전환">☀</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ====== TOC ====== -->
+  <aside class="toc" id="toc">
+    <div class="toc-title">목차</div>
+    <a href="#intro">1. 개요</a>
+    <a href="#prep">2. 준비</a>
+    <a href="#first-run">3. 첫 실행 — 5분 튜토리얼</a>
+    <a href="#screen">4. 화면 구성</a>
+    <a href="#workflow">5. 핵심 작업 흐름</a>
+    <div class="toc-sub">
+      <a href="#wf-load">5.1 요구사항 불러오기</a>
+      <a href="#wf-entity">5.2 엔터티 추출·확정</a>
+      <a href="#wf-rel">5.3 관계 추천·확정</a>
+      <a href="#wf-glossary">5.4 용어 사전 구축</a>
+      <a href="#wf-conflict">5.5 중복·충돌 통합</a>
+      <a href="#wf-nonstd">5.6 비표준 용어 정제</a>
+      <a href="#wf-review">5.7 완성도 검토</a>
+      <a href="#wf-export">5.8 내보내기</a>
+    </div>
+    <a href="#tips">6. 팁 & 단축키</a>
+    <a href="#troubleshoot">7. 문제 해결</a>
+    <a href="#faq">8. FAQ</a>
+    <a href="#glossary">9. 용어집</a>
+  </aside>
+
+  <!-- ====== MAIN ====== -->
+  <main class="content">
+
+    <div class="hero">
+      <h1>RETS-MODULE-04 — 도메인 모델링 및 용어 사전 구축 도구</h1>
+      <p class="lead">
+        요구사항 문서로부터 도메인 엔터티·관계·용어를 LLM으로 자동 추출하고,
+        이해관계자 간 공통 이해를 지원하는 도메인 모델 및 용어 사전을 구축할 수 있는 단일 페이지 웹 도구입니다.
+      </p>
+      <div class="meta">
+        <span class="pill">버전 <span class="num">1.0</span></span>
+        <span class="pill">발행일 <span class="num">2026-05-07</span></span>
+        <span class="pill">대상 <span class="num">요구사항 분석가 / 아키텍트 / PM</span></span>
+        <span class="pill">소요 시간 <span class="num">5–15분 (첫 실행)</span></span>
+      </div>
+    </div>
+
+    <!-- ====== 1. INTRO ====== -->
+    <section id="intro">
+      <h2><span class="num">1</span>개요</h2>
+      <p>
+        본 도구는 <strong>단일 HTML 파일</strong>(<code>rets_module_04_07_app.html</code>)로 구성되어 있어 별도 서버 없이 브라우저에서 직접 실행됩니다.
+        LLM 릴레이 서버를 통해 도메인 엔터티 추출·관계 추천·용어 정의 생성·완성도 검토 같은 지능화 기능을 제공하며,
+        모든 사용자 작업은 <em>수락/거부 UI</em>를 거치므로 LLM 결과를 무비판적으로 반영하지 않습니다.
+      </p>
+
+      <h3>주요 기능 요약</h3>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">📥 요구사항 로드</div>
+          <div class="card-desc">DEV REQ JSON 파일을 불러와 요구사항 목록을 화면에 표시합니다.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">🤖 LLM 자동 추출</div>
+          <div class="card-desc">요구사항을 분석하여 엔터티·관계·용어 정의를 자동 생성합니다.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">🗺 ER 다이어그램</div>
+          <div class="card-desc">Mermaid erDiagram으로 도메인 모델을 시각화합니다.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">📖 용어 사전</div>
+          <div class="card-desc">표준 용어를 등록·검색하고 동의어/관련 엔터티를 관리합니다.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">⚠ 중복·비표준 탐지</div>
+          <div class="card-desc">용어 충돌과 요구사항 내 비표준 용어를 자동으로 찾아냅니다.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">📤 다양한 내보내기</div>
+          <div class="card-desc">용어 사전(MD/CSV)과 도메인 모델(HTML/MD)을 파일로 출력합니다.</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>ℹ 본 도구의 위치</strong>
+        <p>RETS PoC 산출물 흐름에서 본 도구(MD07)는 STEP 3 단계의 실행 가능 모듈에 해당하며,
+          업스트림으로는 SRS·DDD·SSD를, 다운스트림으로는 벤치마크 결과(MD08)와 본 사용자 가이드(MD09)를 갖습니다.</p>
+      </div>
+    </section>
+
+    <!-- ====== 2. PREP ====== -->
+    <section id="prep">
+      <h2><span class="num">2</span>준비</h2>
+
+      <h3>시스템 요구사항</h3>
+      <table class="kv">
+        <tr><th style="width:200px;">브라우저</th><td>Chrome 110+ / Edge 110+ / Firefox 110+ / Safari 16+</td></tr>
+        <tr><th>해상도</th><td>1280×800 이상 권장 (≥ 960px 에서 1-column 반응형 동작)</td></tr>
+        <tr><th>네트워크</th><td>LLM 기능 사용 시 인터넷 연결 필수 (CDN: Mermaid, LLM 릴레이)</td></tr>
+        <tr><th>JavaScript</th><td>활성화 필요 (모듈은 Vanilla JS로 동작)</td></tr>
+      </table>
+
+      <h3>준비물</h3>
+      <ul>
+        <li><strong>DEV REQ JSON 파일</strong> — RETS 공통 스키마(<code>rets_02c_req_schema.json</code>)를 준수해야 합니다.</li>
+        <li><strong>team_id</strong> — LLM 릴레이 서버에서 발급된 팀 식별자(1–64자). 헤더 우측 입력란에 입력합니다.</li>
+        <li><strong>실행 파일</strong> — <code>rets_module_04_07_app.html</code> 파일 한 개.</li>
+      </ul>
+
+      <div class="callout warn">
+        <strong>⚠ team_id가 없으면?</strong>
+        <p>LLM 릴레이 서버에 접속할 수 없어 자동 추출 기능(엔터티/관계/용어/완성도)이 동작하지 않습니다. 수동 추가/편집은 가능합니다.</p>
+      </div>
+    </section>
+
+    <!-- ====== 3. FIRST RUN ====== -->
+    <section id="first-run">
+      <h2><span class="num">3</span>첫 실행 — 5분 튜토리얼</h2>
+      <p class="lead">샘플 DEV REQ 데이터를 로드해 도메인 모델을 만들고 용어 사전을 내보내기까지의 흐름을 따라가 보세요.</p>
+
+      <ol class="steps">
+        <li>
+          <strong>앱 열기</strong>
+          <div class="desc"><code>rets_module_04_07_app.html</code> 파일을 더블클릭하거나 브라우저로 드래그합니다. 우측 상단의 [↗ 앱 실행] 버튼으로도 열 수 있습니다.</div>
+        </li>
+        <li>
+          <strong>team_id 입력</strong>
+          <div class="desc">헤더 우측 <code>team_id</code> 입력란에 발급받은 식별자를 입력합니다 (예: <code>team-04</code>).</div>
+        </li>
+        <li>
+          <strong>DEV REQ JSON 로드</strong>
+          <div class="desc">[↑ 불러오기] 버튼 → 파일 선택. 로드 성공 시 우측 하단에 Toast 알림이 표시됩니다.</div>
+        </li>
+        <li>
+          <strong>엔터티 자동 추출</strong>
+          <div class="desc">[도메인 모델] 탭 → [🤖 엔터티 추출] 클릭. LLM 응답이 도착하면 우측 드로어에 후보 목록이 펼쳐집니다.</div>
+        </li>
+        <li>
+          <strong>엔터티 수락/거부</strong>
+          <div class="desc">각 후보의 [수락]/[거부] 버튼으로 결정합니다. [전체 수락]도 가능합니다.</div>
+        </li>
+        <li>
+          <strong>관계 자동 추천</strong>
+          <div class="desc">[🤖 관계 추천] 클릭 → 후보를 검토 후 수락하면 ER 다이어그램이 즉시 갱신됩니다.</div>
+        </li>
+        <li>
+          <strong>용어 정의 생성</strong>
+          <div class="desc">[용어 사전] 탭 → [🤖 용어 정의 생성] 클릭. 결과를 수락하면 사전에 자동 등록됩니다.</div>
+        </li>
+        <li>
+          <strong>내보내기</strong>
+          <div class="desc">[↓ 내보내기] 메뉴 → [용어 사전 (Markdown)] 또는 [도메인 모델 (HTML)] 선택. 즉시 다운로드됩니다.</div>
+        </li>
+      </ol>
+
+      <div class="callout success">
+        <strong>✓ 5분이면 충분합니다</strong>
+        <p>샘플 요구사항이 20–30개라면 LLM 호출 3회와 수동 검토만으로 도메인 모델 초안이 완성됩니다.</p>
+      </div>
+    </section>
+
+    <!-- ====== 4. SCREEN ====== -->
+    <section id="screen">
+      <h2><span class="num">4</span>화면 구성</h2>
+      <p>도구는 <strong>3단 구조</strong>(헤더 / 작업 탭 / 본문)로 구성되며, 본문은 활성 탭에 따라 2-column 또는 1-column 레이아웃으로 변경됩니다.</p>
+
+      <h3>4.1 헤더 (Sticky)</h3>
+      <div class="mock">
+        <div class="mock-header">
+          <span class="mock-tag">RETS</span>
+          <strong style="color:var(--text-pri);">도메인 모델링 및 용어 사전</strong>
+          <span style="margin-left:auto;display:flex;gap:6px;">
+            <span class="btn-mini">team_id</span>
+            <span class="btn-mini">↑ 불러오기</span>
+            <span class="btn-mini brand">↓ 내보내기 ▾</span>
+            <span class="btn-mini">한/En</span>
+            <span class="btn-mini">☀</span>
+          </span>
+        </div>
+        <div class="mock-body">헤더 — Blur Glass 효과(<code>backdrop-filter: blur(14px) saturate(160%)</code>) / 높이 52px / sticky</div>
+      </div>
+
+      <table class="kv">
+        <tr><th>RETS 뱃지 + 모듈명</th><td>현재 모듈을 식별합니다. 클릭 동작 없음.</td></tr>
+        <tr><th>중앙 로고</th><td>조직 로고. 라이트/다크 자동 전환.</td></tr>
+        <tr><th>team_id 입력</th><td>LLM 릴레이 서버 인증용 팀 식별자(1–64자).</td></tr>
+        <tr><th>↑ 불러오기</th><td>DEV REQ JSON 파일 선택. <code>.json</code> 파일만 허용.</td></tr>
+        <tr><th>↓ 내보내기</th><td>드롭다운: 용어 사전(MD/CSV) · 도메인 모델(HTML/MD)</td></tr>
+        <tr><th>한/En</th><td>UI 전체를 한국어 ↔ 영어로 즉시 전환.</td></tr>
+        <tr><th>☀ / 🌙</th><td>라이트/다크 모드 토글. 설정은 자동 저장(localStorage).</td></tr>
+      </table>
+
+      <h3>4.2 작업 탭</h3>
+      <p>본문은 다음 3개 탭으로 구성됩니다.</p>
+      <table class="kv">
+        <tr><th style="width:140px;">탭</th><th>설명</th></tr>
+        <tr><td><span class="badge badge-brand">도메인 모델</span></td><td>엔터티·관계 목록과 ER 다이어그램. 기본 진입 탭.</td></tr>
+        <tr><td><span class="badge badge-brand">용어 사전</span></td><td>용어 목록·검색·등록과 상세 정보 패널.</td></tr>
+        <tr><td><span class="badge badge-brand">요구사항 검토</span></td><td>로드된 DEV REQ 목록과 비표준 용어 탐지·교체.</td></tr>
+      </table>
+
+      <h3>4.3 본문 레이아웃 (도메인 모델 탭)</h3>
+      <div class="mock">
+        <div class="mock-header"><span style="color:var(--text-pri); font-weight:700;">도메인 모델</span></div>
+        <div class="mock-body" style="display:grid; grid-template-columns:1fr 1px 1fr; gap:0;">
+          <div style="padding-right:12px;">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
+              <span class="btn-mini">🤖 엔터티 추출</span>
+              <span class="btn-mini">🤖 관계 추천</span>
+              <span class="btn-mini">🔍 완성도 검토</span>
+            </div>
+            <div style="font-size:10px;color:var(--text-sec);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;">엔터티 (3)</div>
+            <div class="mock-row">📦 <strong style="color:var(--text-pri);">요구사항</strong> <span style="float:right;"><span class="btn-mini">편집</span> <span class="btn-mini danger">삭제</span></span></div>
+            <div class="mock-row">📦 <strong style="color:var(--text-pri);">이해관계자</strong> <span style="float:right;"><span class="btn-mini">편집</span> <span class="btn-mini danger">삭제</span></span></div>
+            <div class="mock-row">📦 <strong style="color:var(--text-pri);">도메인 모델</strong> <span style="float:right;"><span class="btn-mini">편집</span> <span class="btn-mini danger">삭제</span></span></div>
+            <div style="font-size:10px;color:var(--text-sec);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin:8px 0 4px;">관계 (2)</div>
+            <div class="mock-row">🔗 요구사항 <code>||--o{</code> 이해관계자</div>
+          </div>
+          <div style="background:var(--border);"></div>
+          <div style="padding-left:12px;">
+            <div style="font-size:10px;color:var(--text-sec);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">ER 다이어그램</div>
+            <pre style="font-size:10px;margin:0;">erDiagram
+  요구사항 {
+    string req_id PK
+    string req_name
+  }
+  이해관계자 {
+    string id PK
+    string name
+  }
+  요구사항 ||--o{ 이해관계자 : "정의"</pre>
+          </div>
+        </div>
+      </div>
+
+      <h3>4.4 상태 바 (Footer)</h3>
+      <p>화면 하단의 38px 상태 바에는 LLM 세션 상태와 현재 데이터 통계(요구사항/엔터티/관계/용어 수)가 실시간 표시됩니다.</p>
+    </section>
+
+    <!-- ====== 5. WORKFLOW ====== -->
+    <section id="workflow">
+      <h2><span class="num">5</span>핵심 작업 흐름</h2>
+      <p class="lead">실무에서 가장 자주 수행하는 8가지 작업을 정리했습니다.</p>
+
+      <h3 id="wf-load">5.1 요구사항 불러오기</h3>
+      <p>RETS 공통 스키마를 따르는 DEV REQ JSON을 로드합니다.</p>
+      <ol class="steps">
+        <li><strong>[↑ 불러오기] 클릭</strong><div class="desc">파일 선택 다이얼로그가 열립니다.</div></li>
+        <li><strong>JSON 파일 선택</strong><div class="desc">스키마(<code>req_id</code>, <code>req_name</code>, <code>req_type</code> 등)가 검증됩니다.</div></li>
+        <li><strong>로드 결과 확인</strong><div class="desc">총 N개 요구사항 로드 / 오류 항목 스킵 정보가 Toast로 안내됩니다.</div></li>
+      </ol>
+      <div class="callout warn">
+        <strong>⚠ 스키마 오류</strong>
+        <p><code>req_id</code> 누락이나 패턴 불일치(<code>^DEV_(FR|NFR)_\d{3}(_\d{2}){0,4}$</code>) 항목은 자동으로 스킵되며 Toast로 갯수가 표시됩니다.</p>
+      </div>
+
+      <h3 id="wf-entity">5.2 엔터티 추출·확정</h3>
+      <p>로드된 요구사항을 LLM이 분석하여 도메인 엔터티 후보를 자동 추출합니다.</p>
+      <ol class="steps">
+        <li><strong>[🤖 엔터티 추출] 클릭</strong><div class="desc">최초 클릭 시 LLM 세션이 자동 생성됩니다(team_id 필요).</div></li>
+        <li><strong>후보 검토</strong><div class="desc">우측 드로어에 5–10개의 엔터티 후보가 이름·설명·속성과 함께 표시됩니다.</div></li>
+        <li><strong>수락 / 거부</strong><div class="desc">개별 [수락] 또는 [전체 수락]. 수락된 엔터티만 도메인 모델에 반영됩니다.</div></li>
+        <li><strong>직접 추가·편집</strong><div class="desc">[+ 엔터티 추가] 또는 목록의 [편집] 버튼으로 수동 보완.</div></li>
+      </ol>
+
+      <h3 id="wf-rel">5.3 관계 추천·확정</h3>
+      <p>확정된 엔터티들 사이의 관계를 LLM이 추천합니다(엔터티 2개 이상 필요).</p>
+      <ol class="steps">
+        <li><strong>[🤖 관계 추천] 클릭</strong></li>
+        <li><strong>후보 검토</strong><div class="desc">소스/타겟·유형(<code>association</code>, <code>aggregation</code> 등)·카디널리티·레이블이 표시됩니다.</div></li>
+        <li><strong>수락 시 즉시 ER 반영</strong><div class="desc">우측 ER 다이어그램이 자동 재렌더링됩니다.</div></li>
+      </ol>
+
+      <h3 id="wf-glossary">5.4 용어 사전 구축</h3>
+      <ol class="steps">
+        <li><strong>[용어 사전] 탭으로 이동</strong></li>
+        <li><strong>[🤖 용어 정의 생성] 클릭</strong><div class="desc">엔터티별 비즈니스 용어 정의 후보가 생성됩니다.</div></li>
+        <li><strong>수락하여 사전 등록</strong></li>
+        <li><strong>검색 / 상세 조회</strong><div class="desc">검색창에 키워드 입력 시 실시간 필터링(150ms debounce).</div></li>
+        <li><strong>관련 엔터티 점프</strong><div class="desc">상세 패널의 [📦 엔터티명] 태그를 클릭하면 도메인 모델 탭의 해당 엔터티로 이동합니다.</div></li>
+      </ol>
+
+      <h3 id="wf-conflict">5.5 중복·충돌 통합</h3>
+      <p>완전 일치 또는 동의어 중복으로 인한 충돌 용어를 탐지하고 단일 표준으로 병합합니다.</p>
+      <ol class="steps">
+        <li><strong>[⚠ 중복 검사] 클릭</strong><div class="desc">충돌 쌍 목록이 상단 배너로 표시됩니다.</div></li>
+        <li><strong>기준 용어 선택</strong><div class="desc">두 용어 중 하나를 기준으로 [통합] 버튼 클릭.</div></li>
+        <li><strong>병합 결과</strong><div class="desc">동의어와 관련 엔터티가 합쳐지고, 다른 용어는 사전에서 제거됩니다.</div></li>
+      </ol>
+
+      <h3 id="wf-nonstd">5.6 비표준 용어 정제</h3>
+      <p>용어 사전의 동의어를 기준으로 요구사항 텍스트에 사용된 비표준 표현을 찾아 표준 용어로 교체합니다.</p>
+      <ol class="steps">
+        <li><strong>[요구사항 검토] 탭 이동</strong></li>
+        <li><strong>[⚠ 비표준 용어 검사] 클릭</strong><div class="desc">탐지된 N건이 Toast로 안내되고 해당 행이 노란 배경으로 표시됩니다.</div></li>
+        <li><strong>개별 [수락] 또는 [전체 수락]</strong><div class="desc">선택한 항목의 텍스트가 표준 용어로 즉시 치환됩니다.</div></li>
+      </ol>
+
+      <h3 id="wf-review">5.7 완성도 검토</h3>
+      <p>현재까지 만든 도메인 모델과 용어 사전 전체를 LLM이 진단하고 누락 항목을 제안합니다.</p>
+      <ol class="steps">
+        <li><strong>[🔍 완성도 검토] 클릭</strong></li>
+        <li><strong>제안 카테고리별 검토</strong><div class="desc">누락 엔터티 / 부족한 관계 / 미등록 용어 / 불완전한 정의로 그룹화됩니다.</div></li>
+        <li><strong>제안 [추가] 또는 [무시]</strong><div class="desc">[추가]를 누르면 도메인 모델 또는 사전에 즉시 반영됩니다.</div></li>
+      </ol>
+
+      <h3 id="wf-export">5.8 내보내기</h3>
+      <table class="kv">
+        <tr><th style="width:230px;">메뉴</th><th>출력 형식</th><th>파일명 예시</th></tr>
+        <tr><td>📄 용어 사전 (Markdown)</td><td>제목·정의·동의어·관련 엔터티·비고를 섹션별로 표기</td><td><code>glossary_20260507.md</code></td></tr>
+        <tr><td>📊 용어 사전 (CSV)</td><td>RFC 4180 호환, UTF-8 BOM 없음</td><td><code>glossary_20260507.csv</code></td></tr>
+        <tr><td>🗺 도메인 모델 (HTML)</td><td>Mermaid CDN을 포함한 독립 HTML</td><td><code>domain_model_20260507.html</code></td></tr>
+        <tr><td>📝 도메인 모델 (Markdown)</td><td>mermaid 코드 블록 포함</td><td><code>domain_model_20260507.md</code></td></tr>
+      </table>
+    </section>
+
+    <!-- ====== 6. TIPS ====== -->
+    <section id="tips">
+      <h2><span class="num">6</span>팁 & 단축키</h2>
+
+      <h3>키보드 단축키</h3>
+      <table class="kv">
+        <tr><th style="width:200px;">동작</th><th>키</th></tr>
+        <tr><td>모달/드로어 닫기</td><td><kbd>Esc</kbd></td></tr>
+        <tr><td>입력란 포커스 이동</td><td><kbd>Tab</kbd> / <kbd>Shift</kbd> + <kbd>Tab</kbd></td></tr>
+        <tr><td>버튼 활성화</td><td><kbd>Enter</kbd> / <kbd>Space</kbd></td></tr>
+        <tr><td>다중 선택 (관련 엔터티 등)</td><td><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + 클릭</td></tr>
+      </table>
+
+      <h3>실무 팁</h3>
+      <ul>
+        <li>처음에는 <strong>요구사항 50건 이하</strong>로 시작하면 LLM 응답 속도가 더 빠릅니다.</li>
+        <li>엔터티 후보 중 <em>너무 추상적인 항목</em>(예: "시스템", "데이터")은 거부하는 편이 모델 가독성에 도움됩니다.</li>
+        <li>관계 추천은 엔터티가 <strong>3개 이상 확정</strong>된 뒤에 실행하면 더 정확합니다.</li>
+        <li>비표준 용어 검사 전에 용어 사전의 <strong>동의어를 충실히 기재</strong>하세요. 동의어가 곧 탐지 룰이 됩니다.</li>
+        <li>중요한 작업 전에 <strong>[내보내기]</strong>로 백업해 두면 안전합니다 — 본 도구는 브라우저 메모리·localStorage 기반입니다.</li>
+        <li>다크 모드는 ER 다이어그램에 자동 적용됩니다(<code>filter: invert + hue-rotate</code>).</li>
+      </ul>
+
+      <div class="callout">
+        <strong>ℹ 자동 저장</strong>
+        <p>도메인 모델·용어 사전·테마/언어/team_id 설정은 브라우저 <code>localStorage</code>에 자동 저장되어 다음 방문 시 복원됩니다.
+          단, 브라우저 캐시를 비우면 로컬 데이터가 사라지므로 주기적인 내보내기를 권장합니다.</p>
+      </div>
+    </section>
+
+    <!-- ====== 7. TROUBLESHOOT ====== -->
+    <section id="troubleshoot">
+      <h2><span class="num">7</span>문제 해결</h2>
+
+      <h3>증상별 빠른 진단</h3>
+      <table class="kv">
+        <tr><th style="width:34%;">증상</th><th style="width:33%;">원인</th><th>해결</th></tr>
+        <tr>
+          <td>[엔터티 추출] 클릭 시 <span class="badge badge-warning">team_id 필요</span> Toast</td>
+          <td>team_id 미입력</td>
+          <td>헤더 우측의 <code>team_id</code> 입력란에 식별자 입력 후 재시도.</td>
+        </tr>
+        <tr>
+          <td>LLM 호출 실패 / 상태 바 <span class="badge badge-error">오류</span></td>
+          <td>네트워크 단절 또는 릴레이 서버 일시 장애</td>
+          <td>잠시 후 재시도. 지속되면 팀 관리자에게 <code>team_id</code> 유효성 확인 요청.</td>
+        </tr>
+        <tr>
+          <td>JSON 로드 후 항목 일부가 누락</td>
+          <td>스키마 오류 항목이 자동 스킵됨</td>
+          <td>Toast의 스킵 갯수 확인. 원본 JSON에서 <code>req_id</code> 패턴/필드 점검.</td>
+        </tr>
+        <tr>
+          <td>ER 다이어그램이 코드 블록으로 표시</td>
+          <td>Mermaid 렌더링 실패(특수문자 등)</td>
+          <td>엔터티명에 한글·영문·숫자·언더스코어 외 특수문자 사용 금지. 다른 엔터티명으로 변경 후 재시도.</td>
+        </tr>
+        <tr>
+          <td>관계 추천이 빈 결과</td>
+          <td>확정 엔터티가 2개 미만</td>
+          <td>엔터티를 2개 이상 확정한 후 재시도.</td>
+        </tr>
+        <tr>
+          <td>비표준 용어가 탐지되지 않음</td>
+          <td>용어 사전에 동의어가 등록되지 않음</td>
+          <td>표준 용어의 [편집] → 동의어 필드에 비표준 표현을 추가.</td>
+        </tr>
+        <tr>
+          <td>다운로드 동작이 차단됨</td>
+          <td>브라우저 다운로드 권한 차단</td>
+          <td>주소창 다운로드 차단 아이콘 클릭 → 항상 허용으로 설정.</td>
+        </tr>
+      </table>
+
+      <h3>로그 확인</h3>
+      <p>브라우저 개발자 도구(<kbd>F12</kbd>)의 <strong>Console</strong> 탭에서 LLM 관련 오류 메시지를 확인할 수 있습니다.
+        Network 탭에서는 <code>https://ai-relay.mooo.com:11443</code> 에 대한 요청·응답을 추적할 수 있습니다.</p>
+    </section>
+
+    <!-- ====== 8. FAQ ====== -->
+    <section id="faq">
+      <h2><span class="num">8</span>FAQ</h2>
+
+      <details>
+        <summary>오프라인에서도 사용할 수 있나요?</summary>
+        <div class="det-body">수동 추가·편집·내보내기·로컬 저장은 오프라인에서도 동작합니다. 단, LLM 자동 추출 기능과 Mermaid CDN 렌더링은 인터넷 연결이 필요합니다.</div>
+      </details>
+
+      <details>
+        <summary>여러 프로젝트의 데이터를 동시에 관리할 수 있나요?</summary>
+        <div class="det-body">현재는 단일 프로젝트 컨텍스트만 지원합니다. 다른 프로젝트로 전환하려면 [내보내기]로 백업 후 페이지 새로고침을 권장합니다.</div>
+      </details>
+
+      <details>
+        <summary>LLM 결과가 만족스럽지 않으면 어떻게 하나요?</summary>
+        <div class="det-body">모든 LLM 결과는 [수락]/[거부] 검토 단계를 거치므로 불만족스러운 후보는 거부 후 [엔터티 추가]·[관계 추가]·[용어 추가]로 직접 보완할 수 있습니다.</div>
+      </details>
+
+      <details>
+        <summary>같은 team_id를 다른 사람과 공유해도 되나요?</summary>
+        <div class="det-body">팀당 활성 LLM 세션은 1개로 제한됩니다(릴레이 서버 정책). 동시 사용 시 마지막 세션 생성자가 우선되며 다른 멤버는 일시적으로 호출 실패할 수 있습니다.</div>
+      </details>
+
+      <details>
+        <summary>Mermaid 다이어그램을 수정할 수 있나요?</summary>
+        <div class="det-body">엔터티/관계 데이터를 변경하면 다이어그램이 자동 재생성됩니다. 직접 Mermaid 코드를 편집하려면 [도메인 모델 (Markdown)] 내보내기 후 외부 에디터에서 작업하세요.</div>
+      </details>
+
+      <details>
+        <summary>다국어는 어디까지 지원되나요?</summary>
+        <div class="det-body">현재 UI 레이블은 한국어/영어 두 언어를 지원합니다(헤더 [한/En] 버튼). 사용자가 입력·생성한 데이터(엔터티명·정의 등)는 자동 번역되지 않습니다.</div>
+      </details>
+
+      <details>
+        <summary>iframe 안에 임베드해도 되나요?</summary>
+        <div class="det-body">예. 단일 HTML 파일이고 자체 완결 구조이므로 RETS 통합 앱에서 <code>&lt;iframe&gt;</code> 으로 삽입할 수 있도록 설계되었습니다.</div>
+      </details>
+    </section>
+
+    <!-- ====== 9. GLOSSARY ====== -->
+    <section id="glossary">
+      <h2><span class="num">9</span>용어집</h2>
+      <table class="kv">
+        <tr><th style="width:180px;">용어</th><th>설명</th></tr>
+        <tr><td><strong>DEV REQ</strong></td><td>개발 요구사항(Development Requirement). RETS 공통 스키마를 따르는 JSON 객체.</td></tr>
+        <tr><td><strong>도메인 엔터티</strong></td><td>비즈니스 도메인에서 식별 가능한 핵심 개념(예: 요구사항, 이해관계자).</td></tr>
+        <tr><td><strong>관계(Relationship)</strong></td><td>두 엔터티 사이의 의미적 연결. 카디널리티·유형으로 구체화.</td></tr>
+        <tr><td><strong>카디널리티</strong></td><td>관계 양 끝의 다중성. <code>one</code>, <code>many</code>, <code>zero-or-one</code>, <code>zero-or-many</code>.</td></tr>
+        <tr><td><strong>용어 사전(Glossary)</strong></td><td>표준 용어·정의·동의어·관련 엔터티를 모은 사전.</td></tr>
+        <tr><td><strong>동의어(Synonym)</strong></td><td>표준 용어를 대체할 수 있는 표현. 비표준 용어 탐지의 기준.</td></tr>
+        <tr><td><strong>비표준 용어</strong></td><td>요구사항 텍스트 안에 사용된 표현 중, 사전의 동의어와 일치하는 항목.</td></tr>
+        <tr><td><strong>완성도 검토</strong></td><td>LLM이 모델 전체를 진단하여 누락·부족 항목을 도출하는 작업.</td></tr>
+        <tr><td><strong>릴레이 서버</strong></td><td>다수 팀이 단일 LLM API 키를 공유하기 위한 중계 서버. <code>https://ai-relay.mooo.com:11443</code>.</td></tr>
+        <tr><td><strong>Mermaid erDiagram</strong></td><td>텍스트 기반 ER 다이어그램 문법. 본 도구가 자동 생성.</td></tr>
+      </table>
+    </section>
+
+    <footer>
+      RETS-MODULE-04 사용자 가이드 · 버전 1.0 · 2026-05-07 · MODULE-04 개발팀<br>
+      참조 산출물: MD04 (TDD), MD05 (DDD), MD06 (SSD), MD07 (App), <code>rets_02a_llm_relay_server_dev_guide.md</code>
+    </footer>
+  </main>
+</div>
+
+<script>
+/* 테마 토글 (앱과 동일한 동작) */
+(function(){
+  const KEY = 'rets_m04_settings';
+  function loadTheme(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return 'light';
+      const s = JSON.parse(raw);
+      return (s && s.theme) || 'light';
+    }catch(e){ return 'light'; }
+  }
+  function saveTheme(theme){
+    try{
+      let s = {};
+      const raw = localStorage.getItem(KEY);
+      if(raw) s = JSON.parse(raw) || {};
+      s.theme = theme;
+      localStorage.setItem(KEY, JSON.stringify(s));
+    }catch(e){}
+  }
+  const initial = loadTheme();
+  document.documentElement.setAttribute('data-theme', initial);
+  const btn = document.getElementById('theme-toggle');
+  btn.textContent = initial === 'dark' ? '🌙' : '☀';
+  btn.addEventListener('click', ()=>{
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    btn.textContent = next === 'dark' ? '🌙' : '☀';
+    saveTheme(next);
+  });
+})();
+
+/* TOC 활성 항목 강조 (스크롤 스파이) */
+(function(){
+  const links = document.querySelectorAll('#toc a[href^="#"]');
+  const map = {};
+  links.forEach(a=>{
+    const id = a.getAttribute('href').slice(1);
+    const sec = document.getElementById(id);
+    if(sec) map[id] = a;
+  });
+  const observer = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        const id = e.target.id;
+        Object.values(map).forEach(a=>a.classList.remove('active'));
+        if(map[id]) map[id].classList.add('active');
+      }
+    });
+  }, { rootMargin: '-30% 0px -65% 0px', threshold: 0 });
+  Object.keys(map).forEach(id=>{
+    const sec = document.getElementById(id);
+    if(sec) observer.observe(sec);
+  });
+})();
+</script>
+
+</body>
+</html>

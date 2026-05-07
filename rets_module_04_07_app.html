@@ -1,0 +1,2923 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RETS-MODULE-04 도메인 모델링 및 용어 사전 구축 도구</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23F97316'/%3E%3Ctext x='50%25' y='54%25' font-size='14' font-weight='700' fill='white' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif'%3EM4%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+  <style>
+    /* =====================================================================
+       RETS DESIGN SYSTEM — CSS CUSTOM PROPERTIES
+       (rets_02b_design_system_html/02b_design_system_ref.html 기준)
+    ===================================================================== */
+    :root {
+      --brand-500:#F97316; --brand-400:#FB923C; --brand-600:#EA6C0A;
+      --brand-700:#C2560B; --brand-50:#FFF7ED; --brand-100:#FFEDD5;
+      --error-500:#8c3131; --error-50:#FEF2F2; --error-200:#FECACA; --error-700:#6b2424;
+      --warning-500:#D97706; --warning-50:#FFFBEB; --warning-200:#FDE68A; --warning-700:#92400E;
+      --success-500:#1CB357; --success-50:#F0FDF4; --success-200:#BBF7D0; --success-700:#15803D;
+      --info-500:#3375E8; --info-50:#EFF6FF; --info-200:#BFDBFE; --info-700:#1D4ED8;
+      --bg:#FFFFFF; --surface:#F9FAFB; --surface-2:#F3F4F6;
+      --border:#E5E7EB; --border-md:#D1D5DB;
+      --text-pri:#111827; --text-sec:#6B7280; --text-dis:#9CA3AF; --text-ph:#9CA3AF;
+      --header-bg:rgba(240,242,245,0.72);
+      --radius-sm:4px; --radius-md:6px; --radius-lg:8px;
+      --t:0.15s ease;
+    }
+    [data-theme="dark"] {
+      --brand-500:#F97316; --brand-400:#FB923C; --brand-600:#EA6C0A;
+      --brand-700:#FED7AA; --brand-50:#431407; --brand-100:#7C2D12;
+      --error-500:#F87171; --error-50:#450A0A; --error-200:#991B1B; --error-700:#FCA5A5;
+      --warning-500:#FBBF24; --warning-50:#451A03; --warning-200:#92400E; --warning-700:#FDE68A;
+      --success-500:#3DD171; --success-50:#052E16; --success-200:#166534; --success-700:#86EFAC;
+      --info-500:#5299F0; --info-50:#172554; --info-200:#1E40AF; --info-700:#93C5FD;
+      --bg:#101111; --surface:#1c1d1d; --surface-2:#262727;
+      --border:#303232; --border-md:#404242;
+      --text-pri:#F8FAFC; --text-sec:#94A3B8; --text-dis:#475569; --text-ph:#64748B;
+      --header-bg:rgba(14,35,35,0.80);
+    }
+
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;}
+    body{
+      font-family:'Noto Sans KR',sans-serif;
+      font-size:14px; line-height:1.6; letter-spacing:-0.04em;
+      background:var(--bg); color:var(--text-pri);
+      transition:background var(--t),color var(--t);
+      overflow:hidden;
+    }
+
+    code{
+      font-family:Consolas,'Courier New',monospace;
+      font-size:0.75em; color:#374151;
+      background:var(--surface-2);
+      padding:1px 5px; border-radius:3px;
+      letter-spacing:0; word-break:break-all;
+    }
+    [data-theme="dark"] code{ color:#9CA3AF; }
+
+    /* ── HEADER (sticky, blur glass) ──────────────────────────────── */
+    .app-header{
+      position:sticky; top:0; z-index:100;
+      background:var(--header-bg);
+      -webkit-backdrop-filter:blur(14px) saturate(160%);
+              backdrop-filter:blur(14px) saturate(160%);
+      border-bottom:1px solid var(--border);
+      padding:0 24px; height:52px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .h-left{flex:1; display:flex; align-items:center; gap:10px;}
+    .h-center{flex-shrink:0; display:flex; align-items:center; gap:10px;}
+    .h-right{flex:1; display:flex; align-items:center; justify-content:flex-end; gap:6px;}
+
+    .module-badge{
+      background:#C2560B; color:#fff;
+      font-size:11px; font-weight:700;
+      padding:3px 8px; border-radius:var(--radius-sm);
+      letter-spacing:0.05em;
+    }
+    .module-title{
+      font-size:15px; font-weight:700; color:var(--text-pri);
+      letter-spacing:-0.04em; white-space:nowrap;
+    }
+    .module-title .sub{
+      color:var(--text-sec); font-weight:400; font-size:13px; margin-left:4px;
+    }
+    .org-logo{
+      width:28px; height:28px; border-radius:6px;
+      background:var(--brand-500); color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:12px;
+    }
+
+    /* ── BUTTONS ──────────────────────────────────────────────────── */
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:6px; padding:7px 14px;
+      border-radius:var(--radius-md);
+      font-family:'Noto Sans KR',sans-serif;
+      font-size:13px; font-weight:500;
+      cursor:pointer; border:1px solid transparent;
+      transition:background var(--t),color var(--t),border-color var(--t);
+      white-space:nowrap;
+    }
+    .btn:focus-visible{ outline:2px solid var(--brand-500); outline-offset:2px; }
+    .btn-primary{ background:var(--brand-500); color:#fff; border-color:var(--brand-500); }
+    .btn-primary:hover{ background:var(--brand-600); border-color:var(--brand-600); }
+    .btn-primary:active{ background:var(--brand-700); }
+    .btn-secondary{ background:var(--surface); color:var(--text-pri); border-color:var(--border-md); }
+    .btn-secondary:hover{ background:var(--surface-2); }
+    .btn-ghost{ background:transparent; color:var(--text-pri); border-color:transparent; }
+    .btn-ghost:hover{ background:var(--surface-2); }
+    .btn-danger{ background:var(--error-50); color:var(--error-500); border-color:var(--error-200); }
+    .btn-danger:hover{ background:var(--error-200); }
+    .btn-brand-outline{ background:transparent; color:var(--brand-500); border-color:var(--brand-500); }
+    .btn-brand-outline:hover{ background:var(--brand-50); }
+    .btn[disabled],.btn-disabled{ opacity:0.45; cursor:not-allowed; pointer-events:none; }
+    .btn-sm{ padding:4px 10px; font-size:12px; }
+    .btn-lg{ padding:10px 20px; font-size:15px; }
+    .btn-icon{
+      padding:7px; background:transparent;
+      border-color:var(--border-md); color:var(--text-sec);
+      width:50px; height:34px;
+    }
+    .btn-icon:hover{ background:var(--surface-2); color:var(--text-pri); }
+
+    /* Theme toggle */
+    #theme-toggle{
+      width:34px; height:34px; border-radius:var(--radius-md);
+      border:1px solid var(--border-md); background:var(--surface);
+      color:var(--text-sec); cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px; transition:background var(--t);
+    }
+    #theme-toggle:hover{ background:var(--surface-2); }
+
+    /* Dropdown */
+    .dropdown{ position:relative; }
+    .dropdown-menu{
+      position:absolute; top:calc(100% + 4px); right:0;
+      min-width:220px; background:var(--bg);
+      border:1px solid var(--border); border-radius:var(--radius-md);
+      box-shadow:0 8px 24px rgba(0,0,0,0.08);
+      padding:6px; z-index:50;
+      display:none;
+    }
+    .dropdown-menu.open{ display:block; }
+    .dropdown-item{
+      display:flex; align-items:center; gap:8px;
+      padding:8px 10px; font-size:13px;
+      color:var(--text-pri); cursor:pointer;
+      border-radius:var(--radius-sm);
+    }
+    .dropdown-item:hover{ background:var(--surface-2); }
+    .dropdown-divider{ border-top:1px solid var(--border); margin:4px 0; }
+
+    /* ── BADGES & TAGS ───────────────────────────────────────────── */
+    .badge{
+      display:inline-flex; align-items:center; gap:4px;
+      padding:2px 8px; border-radius:999px;
+      font-size:11px; font-weight:700; white-space:nowrap;
+    }
+    .badge-brand{ background:var(--brand-50); color:var(--brand-600); border:1px solid var(--brand-100); }
+    .badge-error{ background:var(--error-50); color:var(--error-700); border:1px solid var(--error-200); }
+    .badge-warning{ background:var(--warning-50); color:var(--warning-700); border:1px solid var(--warning-200); }
+    .badge-success{ background:var(--success-50); color:var(--success-700); border:1px solid var(--success-200); }
+    .badge-info{ background:var(--info-50); color:var(--info-700); border:1px solid var(--info-200); }
+    .badge-neutral{ background:var(--surface-2); color:var(--text-sec); border:1px solid var(--border); }
+    .tag{
+      display:inline-flex; align-items:center; gap:4px;
+      padding:3px 10px; border-radius:var(--radius-sm);
+      font-size:12px; font-weight:500; white-space:nowrap;
+      background:var(--surface-2); color:var(--text-pri);
+      border:1px solid var(--border);
+    }
+    .tag-brand{ background:var(--brand-50); color:var(--brand-600); border-color:var(--brand-100); }
+
+    /* ── INPUTS ──────────────────────────────────────────────────── */
+    .input{
+      width:100%; padding:7px 11px;
+      border:1px solid var(--border-md); border-radius:var(--radius-md);
+      background:var(--bg); color:var(--text-pri);
+      font-family:'Noto Sans KR',sans-serif; font-size:13px;
+      outline:none; transition:border-color var(--t),box-shadow var(--t);
+    }
+    .input::placeholder{ color:var(--text-ph); }
+    .input:focus{ border-color:var(--brand-500); box-shadow:0 0 0 3px var(--brand-50); }
+    .input:disabled{ background:var(--surface-2); color:var(--text-dis); cursor:not-allowed; border-color:var(--border); }
+    textarea.input{ resize:vertical; min-height:80px; }
+    select.input{
+      appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 10px center;
+      padding-right:28px;
+    }
+    .form-group{ display:flex; flex-direction:column; gap:5px; }
+    .form-label{ font-size:13px; font-weight:500; color:var(--text-pri); }
+    .form-label .required{ color:var(--error-500); margin-left:2px; }
+    .form-hint{ font-size:11px; color:var(--text-sec); }
+    .form-error-msg{ font-size:11px; color:var(--error-500); }
+
+    /* Header inline team_id input */
+    .team-id-input{
+      width:140px; height:34px;
+      padding:6px 10px; font-size:12px;
+      border:1px solid var(--border-md); border-radius:var(--radius-md);
+      background:var(--surface); color:var(--text-pri);
+    }
+    .team-id-input:focus{ outline:none; border-color:var(--brand-500); box-shadow:0 0 0 3px var(--brand-50); }
+
+    /* ── TABS ────────────────────────────────────────────────────── */
+    .tabs{
+      display:flex; gap:0;
+      border-bottom:1px solid var(--border);
+      background:var(--surface);
+      padding:0 24px;
+      flex-shrink:0;
+    }
+    .tab{
+      padding:9px 18px; font-size:13px; font-weight:500;
+      color:var(--text-sec); cursor:pointer;
+      border:none; border-bottom:2px solid transparent;
+      margin-bottom:-1px; white-space:nowrap;
+      transition:color var(--t),border-color var(--t);
+      background:transparent;
+      font-family:'Noto Sans KR',sans-serif;
+    }
+    .tab:hover{ color:var(--text-pri); }
+    .tab.active{
+      color:var(--brand-500);
+      border-bottom-color:var(--brand-500);
+      font-weight:700;
+    }
+
+    /* ── MAIN LAYOUT ─────────────────────────────────────────────── */
+    .app-shell{
+      height:calc(100vh - 52px - 38px);
+      display:flex; flex-direction:column;
+      overflow:hidden;
+    }
+    .tab-pane{
+      flex:1; overflow:hidden;
+      display:none;
+    }
+    .tab-pane.active{ display:flex; }
+
+    /* 2-column layout */
+    .two-col{
+      flex:1; display:flex; min-height:0;
+    }
+    .col-left, .col-right{
+      display:flex; flex-direction:column;
+      overflow:hidden; min-height:0;
+    }
+    .col-left{
+      width:42%; min-width:280px;
+      border-right:1px solid var(--border);
+    }
+    .col-right{ flex:1; }
+
+    .pane-header{
+      padding:14px 20px 10px;
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      gap:8px; flex-shrink:0;
+      background:var(--bg);
+    }
+    .pane-title{ font-size:14px; font-weight:700; }
+    .pane-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+    .pane-body{
+      flex:1; overflow:auto;
+      padding:12px 20px;
+    }
+
+    /* ── CARDS / LIST ITEMS ──────────────────────────────────────── */
+    .card{
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:14px;
+    }
+    .list-item{
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:var(--radius-md); padding:10px 12px;
+      margin-bottom:8px; transition:border-color var(--t),background var(--t);
+      cursor:pointer;
+    }
+    .list-item:hover{ border-color:var(--brand-500); background:var(--surface); }
+    .list-item.selected{ border-color:var(--brand-500); background:var(--brand-50); }
+    .list-item-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .list-item-title{ font-size:13px; font-weight:700; flex:1; min-width:0; word-break:break-all; }
+    .list-item-desc{ font-size:12px; color:var(--text-sec); margin-top:4px; line-height:1.5; }
+    .list-item-meta{ font-size:11px; color:var(--text-dis); margin-top:4px; }
+    .list-item-actions{ display:flex; gap:4px; }
+
+    /* ── STATE PANELS ────────────────────────────────────────────── */
+    .state-panel{
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:10px; padding:36px 20px;
+      border:1px dashed var(--border); border-radius:var(--radius-lg);
+      background:var(--surface); text-align:center;
+      min-height:160px; margin:8px 0;
+    }
+    .state-icon{ font-size:32px; line-height:1; }
+    .state-title{ font-size:14px; font-weight:700; color:var(--text-pri); }
+    .state-desc{ font-size:12px; color:var(--text-sec); max-width:380px; }
+
+    /* Spinner */
+    .spinner{
+      width:18px; height:18px;
+      border:2px solid var(--border-md);
+      border-top-color:var(--brand-500);
+      border-radius:50%;
+      animation:spin 0.7s linear infinite;
+      display:inline-block;
+    }
+    .spinner-lg{ width:32px; height:32px; border-width:3px; }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+
+    /* ── DATA TABLE ──────────────────────────────────────────────── */
+    .data-table-wrap{
+      border:1px solid var(--border); border-radius:var(--radius-lg);
+      overflow:auto;
+    }
+    .data-table{
+      width:100%; border-collapse:collapse; font-size:13px;
+    }
+    .data-table th{
+      background:var(--surface); padding:9px 12px;
+      text-align:left; font-weight:700; font-size:12px;
+      color:var(--text-sec);
+      border-bottom:1px solid var(--border); white-space:nowrap;
+      position:sticky; top:0; z-index:1;
+    }
+    .data-table td{
+      padding:9px 12px;
+      border-bottom:1px solid var(--border);
+      color:var(--text-pri); vertical-align:top;
+    }
+    .data-table tr:last-child td{ border-bottom:none; }
+    .data-table tr:hover td{ background:var(--surface); }
+
+    /* ── TOAST ───────────────────────────────────────────────────── */
+    #toast-container{
+      position:fixed; bottom:24px; right:24px;
+      display:flex; flex-direction:column; gap:8px;
+      z-index:9999; pointer-events:none;
+      max-width:380px;
+    }
+    .toast{
+      pointer-events:all;
+      display:flex; align-items:flex-start; gap:10px;
+      padding:10px 14px; border-radius:var(--radius-md);
+      border:1px solid; font-size:13px; max-width:340px; width:100%;
+      animation:toastIn 0.2s ease;
+      background:var(--bg);
+    }
+    .toast.removing{ animation:toastOut 0.2s ease forwards; }
+    @keyframes toastIn{ from{opacity:0;transform:translateX(16px);} to{opacity:1;transform:none;} }
+    @keyframes toastOut{ to{opacity:0;transform:translateX(16px);} }
+    .toast-icon{ font-size:16px; flex-shrink:0; margin-top:1px; }
+    .toast-body{ flex:1; min-width:0; }
+    .toast-title{ font-weight:700; font-size:13px; margin-bottom:1px; }
+    .toast-msg{ font-size:12px; color:var(--text-sec); word-break:break-word; }
+    .toast-close{
+      cursor:pointer; font-size:18px; line-height:1;
+      color:var(--text-sec); background:none; border:none;
+      font-family:inherit; padding:0;
+    }
+    .toast-success{ border-left:4px solid var(--success-500); background:var(--success-50); color:var(--success-700); }
+    .toast-success .toast-msg{ color:var(--success-700); opacity:0.85; }
+    .toast-error  { border-left:4px solid var(--error-500); background:var(--error-50); color:var(--error-700); }
+    .toast-error .toast-msg{ color:var(--error-700); opacity:0.85; }
+    .toast-warning{ border-left:4px solid var(--warning-500); background:var(--warning-50); color:var(--warning-700); }
+    .toast-warning .toast-msg{ color:var(--warning-700); opacity:0.85; }
+    .toast-info   { border-left:4px solid var(--info-500); background:var(--info-50); color:var(--info-700); }
+    .toast-info .toast-msg{ color:var(--info-700); opacity:0.85; }
+
+    /* ── MODAL ───────────────────────────────────────────────────── */
+    .modal-overlay{
+      position:fixed; inset:0; background:rgba(0,0,0,0.45);
+      display:none; align-items:center; justify-content:center;
+      z-index:200; padding:24px;
+    }
+    .modal-overlay.open{ display:flex; }
+    .modal{
+      background:var(--bg); border-radius:var(--radius-lg);
+      border:1px solid var(--border);
+      width:100%; max-width:460px;
+      display:flex; flex-direction:column;
+      animation:fadeIn 0.18s ease;
+    }
+    @keyframes fadeIn{ from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
+    .modal-header{
+      padding:18px 20px 14px; display:flex;
+      align-items:center; justify-content:space-between;
+    }
+    .modal-title{ font-size:15px; font-weight:700; }
+    .modal-body{ padding:0 20px 16px; font-size:13px; color:var(--text-sec); line-height:1.7; }
+    .modal-footer{
+      padding:12px 20px 18px; display:flex; gap:8px; justify-content:flex-end;
+    }
+    .modal-header .btn-icon{ border-color:transparent; background:transparent; }
+    .modal-header .btn-icon:hover{ background:var(--surface-2); }
+
+    /* ── DRAWER ──────────────────────────────────────────────────── */
+    .drawer-overlay{
+      position:fixed; inset:0; background:rgba(0,0,0,0.45);
+      z-index:200; opacity:0; pointer-events:none;
+      transition:opacity 0.22s ease;
+    }
+    .drawer-overlay.open{ opacity:1; pointer-events:all; }
+    .drawer{
+      position:fixed; top:0; right:0;
+      height:100%; width:480px; max-width:92vw;
+      background:var(--bg);
+      border-left:1px solid var(--border);
+      display:flex; flex-direction:column;
+      transform:translateX(100%); transition:transform 0.25s ease;
+      z-index:201;
+    }
+    .drawer-overlay.open .drawer{ transform:translateX(0); }
+    .drawer-header{
+      padding:18px 20px 14px;
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0; border-bottom:1px solid var(--border);
+    }
+    .drawer-title{ font-size:15px; font-weight:700; }
+    .drawer-body{
+      flex:1; overflow-y:auto;
+      padding:16px 20px;
+      font-size:13px; color:var(--text-pri); line-height:1.7;
+    }
+    .drawer-footer{
+      padding:12px 20px 18px; display:flex; gap:8px;
+      justify-content:flex-end; flex-shrink:0;
+      border-top:1px solid var(--border);
+    }
+    .drawer-header .btn-icon{ border-color:transparent; background:transparent; }
+    .drawer-header .btn-icon:hover{ background:var(--surface-2); }
+    .drawer-field{
+      display:flex; flex-direction:column; gap:4px;
+      padding:10px 0; border-bottom:1px solid var(--border);
+    }
+    .drawer-field:last-child{ border-bottom:none; }
+    .drawer-field-label{
+      font-size:11px; font-weight:700; text-transform:uppercase;
+      letter-spacing:0.06em; color:var(--text-dis);
+    }
+    .drawer-field-value{ font-size:13px; color:var(--text-pri); }
+
+    /* ── LLM RESULT PANEL (drawer wide) ─────────────────────────── */
+    .drawer-wide{ width:560px; }
+    .candidate-card{
+      border:1px solid var(--border); border-radius:var(--radius-md);
+      padding:12px; margin-bottom:10px; background:var(--surface);
+    }
+    .candidate-head{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:8px; margin-bottom:6px;
+    }
+    .candidate-name{ font-size:13px; font-weight:700; flex:1; min-width:0; word-break:break-all; }
+    .candidate-meta{ font-size:11px; color:var(--text-sec); margin-top:6px; }
+    .candidate-actions{ display:flex; gap:4px; flex-shrink:0; }
+
+    /* AI badge */
+    .ai-badge{
+      background:var(--brand-50); color:var(--brand-600);
+      border:1px solid var(--brand-100);
+      font-size:10px; font-weight:700;
+      padding:1px 6px; border-radius:999px;
+    }
+
+    /* ── ER DIAGRAM ──────────────────────────────────────────────── */
+    .er-container{
+      background:var(--bg);
+      border:1px solid var(--border); border-radius:var(--radius-lg);
+      padding:18px; min-height:300px;
+      overflow:auto;
+      display:flex; align-items:flex-start; justify-content:center;
+    }
+    .er-container svg{ max-width:100%; height:auto; }
+    [data-theme="dark"] .er-container svg{ filter:invert(0.92) hue-rotate(180deg); }
+
+    /* ── MISC ────────────────────────────────────────────────────── */
+    .stack{ display:flex; flex-direction:column; gap:12px; }
+    .row-gap{ display:flex; gap:6px; flex-wrap:wrap; }
+    .text-sec{ color:var(--text-sec); }
+    .text-brand{ color:var(--brand-500); }
+    .small{ font-size:12px; }
+    .x-small{ font-size:11px; }
+    .mono{ font-family:Consolas,'Courier New',monospace; letter-spacing:0; }
+    .nowrap{ white-space:nowrap; }
+    .truncate{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* Hidden file input */
+    .file-hidden{ display:none; }
+
+    /* Section headings inside panes */
+    .sec-label{
+      font-size:11px; font-weight:700; letter-spacing:0.08em;
+      text-transform:uppercase; color:var(--text-sec);
+      margin:14px 0 8px;
+      display:flex; align-items:center; gap:6px;
+    }
+    .sec-label:first-child{ margin-top:0; }
+    .sec-label .count{
+      background:var(--surface-2); color:var(--text-sec);
+      font-size:10px; font-weight:700;
+      padding:1px 6px; border-radius:999px;
+      letter-spacing:0;
+    }
+
+    /* Search input with icon */
+    .search-wrap{ position:relative; }
+    .search-wrap .input{ padding-left:30px; }
+    .search-wrap::before{
+      content:"🔍"; position:absolute; left:9px; top:50%;
+      transform:translateY(-50%); font-size:12px; opacity:0.7;
+    }
+
+    /* Conflict banner */
+    .conflict-banner{
+      background:var(--warning-50); border:1px solid var(--warning-200);
+      border-left:4px solid var(--warning-500);
+      border-radius:var(--radius-md);
+      padding:10px 12px; margin-bottom:10px;
+      color:var(--warning-700); font-size:12px;
+    }
+    .conflict-banner .conflict-title{ font-weight:700; margin-bottom:4px; }
+
+    /* Inline non-standard term highlight */
+    .nonstd-row{
+      background:var(--warning-50);
+    }
+    .nonstd-mark{
+      background:var(--warning-200); color:var(--warning-700);
+      padding:0 4px; border-radius:3px; font-weight:500;
+    }
+
+    /* Stats pills */
+    .stat-pill{
+      display:inline-flex; align-items:center; gap:6px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:999px; padding:4px 10px;
+      font-size:11px; color:var(--text-sec);
+    }
+    .stat-pill .num{ font-weight:700; color:var(--brand-500); }
+
+    /* Footer status bar */
+    .status-bar{
+      flex-shrink:0; height:38px;
+      border-top:1px solid var(--border);
+      background:var(--surface);
+      display:flex; align-items:center; gap:14px;
+      padding:0 20px;
+      font-size:11px; color:var(--text-sec);
+    }
+    .status-bar .dot{
+      width:8px; height:8px; border-radius:50%;
+      background:var(--text-dis); display:inline-block;
+    }
+    .status-bar .dot.ok{ background:var(--success-500); }
+    .status-bar .dot.err{ background:var(--error-500); }
+    .status-bar .dot.warn{ background:var(--warning-500); }
+    .status-bar .spacer{ flex:1; }
+
+    /* Properties list (entity attributes) */
+    .attr-table{
+      width:100%; font-size:12px; border-collapse:collapse;
+      margin-top:6px;
+    }
+    .attr-table th, .attr-table td{
+      padding:5px 8px; border-bottom:1px solid var(--border);
+      text-align:left;
+    }
+    .attr-table th{ color:var(--text-sec); font-weight:700; font-size:11px; }
+
+    /* Detail panel right-side glossary */
+    .detail-section{
+      margin-bottom:14px; padding-bottom:14px;
+      border-bottom:1px solid var(--border);
+    }
+    .detail-section:last-child{ border-bottom:none; }
+    .detail-label{
+      font-size:11px; color:var(--text-sec); font-weight:700;
+      text-transform:uppercase; letter-spacing:0.06em;
+      margin-bottom:6px;
+    }
+    .detail-value{ font-size:13px; color:var(--text-pri); line-height:1.7; word-break:break-word; }
+
+    /* Suggestion category */
+    .suggestion-group{ margin-bottom:14px; }
+    .suggestion-group h4{
+      font-size:12px; font-weight:700; color:var(--text-sec);
+      margin-bottom:6px; text-transform:uppercase; letter-spacing:0.06em;
+    }
+
+    /* Mobile / small screens */
+    @media (max-width: 960px){
+      .col-left{ width:100%; border-right:none; border-bottom:1px solid var(--border); }
+      .two-col{ flex-direction:column; }
+      .col-right{ display:none; }
+      .two-col.show-right .col-left{ display:none; }
+      .two-col.show-right .col-right{ display:flex; }
+      .h-center{ display:none; }
+      .h-left .module-title .sub{ display:none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====================================================================
+     HEADER
+==================================================================== -->
+<header class="app-header" role="banner">
+  <div class="h-left">
+    <span class="module-badge">RETS</span>
+    <div class="module-title" id="title-main">
+      <span data-i18n="appTitle">도메인 모델링 및 용어 사전</span>
+      <span class="sub" data-i18n="appSubtitle">— MODULE-04</span>
+    </div>
+  </div>
+
+  <div class="h-center">
+    <div class="org-logo" title="솔루션링크">SL</div>
+  </div>
+
+  <div class="h-right">
+    <input id="team-id" class="team-id-input" type="text" placeholder="team_id" maxlength="64" />
+    <button id="btn-load" class="btn btn-secondary" title="DEV REQ JSON 불러오기">
+      <span>↑</span> <span data-i18n="btnLoad">불러오기</span>
+    </button>
+    <input type="file" id="file-input" class="file-hidden" accept=".json,application/json" />
+
+    <div class="dropdown">
+      <button id="btn-export" class="btn btn-primary" title="내보내기">
+        <span>↓</span> <span data-i18n="btnExport">내보내기</span> <span style="font-size:10px;">▾</span>
+      </button>
+      <div id="export-menu" class="dropdown-menu">
+        <div class="dropdown-item" data-export="glossary-md">📄 <span data-i18n="exGlossaryMd">용어 사전 (Markdown)</span></div>
+        <div class="dropdown-item" data-export="glossary-csv">📊 <span data-i18n="exGlossaryCsv">용어 사전 (CSV)</span></div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" data-export="diagram-html">🗺 <span data-i18n="exDiagramHtml">도메인 모델 (HTML)</span></div>
+        <div class="dropdown-item" data-export="diagram-md">📝 <span data-i18n="exDiagramMd">도메인 모델 (Markdown)</span></div>
+      </div>
+    </div>
+
+    <button id="btn-lang" class="btn-icon" title="언어 전환 / Language">한/En</button>
+    <button id="theme-toggle" title="테마 전환 / Theme">☀</button>
+  </div>
+</header>
+
+<!-- ====================================================================
+     TABS
+==================================================================== -->
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-tab="domain" role="tab"><span data-i18n="tabDomain">도메인 모델</span></button>
+  <button class="tab" data-tab="glossary" role="tab"><span data-i18n="tabGlossary">용어 사전</span></button>
+  <button class="tab" data-tab="review" role="tab"><span data-i18n="tabReview">요구사항 검토</span></button>
+</nav>
+
+<!-- ====================================================================
+     APP SHELL
+==================================================================== -->
+<main class="app-shell">
+
+  <!-- ───── TAB: DOMAIN MODEL ───── -->
+  <section class="tab-pane active" data-pane="domain">
+    <div class="two-col" id="domain-2col">
+      <div class="col-left">
+        <div class="pane-header">
+          <div class="pane-title" data-i18n="domainTitle">엔터티 / 관계</div>
+          <div class="pane-actions">
+            <button class="btn btn-secondary btn-sm" id="btn-extract-entities" title="DEV_FR_002_01">
+              🤖 <span data-i18n="btnExtractEntities">엔터티 추출</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-suggest-rels" title="DEV_FR_003_01">
+              🤖 <span data-i18n="btnSuggestRels">관계 추천</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-review-completeness" title="DEV_FR_006_01">
+              🔍 <span data-i18n="btnReviewCompleteness">완성도 검토</span>
+            </button>
+          </div>
+        </div>
+        <div class="pane-body">
+          <div class="sec-label">
+            <span data-i18n="entitiesLabel">엔터티</span>
+            <span class="count" id="count-entities">0</span>
+            <div style="margin-left:auto;">
+              <button class="btn btn-brand-outline btn-sm" id="btn-add-entity">+ <span data-i18n="btnAddEntity">엔터티 추가</span></button>
+            </div>
+          </div>
+          <div id="entity-list">
+            <!-- entity items injected here -->
+          </div>
+
+          <div class="sec-label">
+            <span data-i18n="relsLabel">관계</span>
+            <span class="count" id="count-rels">0</span>
+            <div style="margin-left:auto;">
+              <button class="btn btn-brand-outline btn-sm" id="btn-add-rel">+ <span data-i18n="btnAddRel">관계 추가</span></button>
+            </div>
+          </div>
+          <div id="rel-list">
+            <!-- relationship items injected here -->
+          </div>
+        </div>
+      </div>
+
+      <div class="col-right">
+        <div class="pane-header">
+          <div class="pane-title" data-i18n="erTitle">ER 다이어그램</div>
+          <div class="pane-actions">
+            <button class="btn btn-icon btn-sm" id="btn-er-refresh" title="새로고침">⟳</button>
+          </div>
+        </div>
+        <div class="pane-body">
+          <div id="er-container" class="er-container">
+            <div class="state-panel">
+              <div class="state-icon">🗺</div>
+              <div class="state-title" data-i18n="erEmptyTitle">ER 다이어그램이 없습니다</div>
+              <div class="state-desc" data-i18n="erEmptyDesc">엔터티와 관계를 추가하면 자동으로 다이어그램이 그려집니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───── TAB: GLOSSARY ───── -->
+  <section class="tab-pane" data-pane="glossary">
+    <div class="two-col">
+      <div class="col-left">
+        <div class="pane-header">
+          <div class="pane-title" data-i18n="glossaryTitle">용어 사전</div>
+          <div class="pane-actions">
+            <button class="btn btn-secondary btn-sm" id="btn-generate-terms" title="DEV_FR_004_01">
+              🤖 <span data-i18n="btnGenerateTerms">용어 정의 생성</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-detect-conflicts" title="DEV_FR_004_03">
+              ⚠ <span data-i18n="btnDetectConflicts">중복 검사</span>
+            </button>
+            <button class="btn btn-brand-outline btn-sm" id="btn-add-term">
+              + <span data-i18n="btnAddTerm">용어 추가</span>
+            </button>
+          </div>
+        </div>
+        <div class="pane-body">
+          <div class="search-wrap" style="margin-bottom:10px;">
+            <input id="search-glossary" class="input" type="text" placeholder="용어 검색..." />
+          </div>
+          <div id="conflict-list"></div>
+          <div id="term-list"></div>
+        </div>
+      </div>
+
+      <div class="col-right">
+        <div class="pane-header">
+          <div class="pane-title" data-i18n="termDetailTitle">용어 상세</div>
+        </div>
+        <div class="pane-body" id="term-detail-body">
+          <div class="state-panel">
+            <div class="state-icon">📖</div>
+            <div class="state-title" data-i18n="termEmptyTitle">용어를 선택하세요</div>
+            <div class="state-desc" data-i18n="termEmptyDesc">좌측 목록에서 용어를 클릭하면 정의·동의어·관련 엔터티가 표시됩니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───── TAB: REVIEW ───── -->
+  <section class="tab-pane" data-pane="review">
+    <div class="pane-header" style="border-bottom:1px solid var(--border);">
+      <div class="pane-title" data-i18n="reviewTitle">요구사항 검토</div>
+      <div class="pane-actions">
+        <button class="btn btn-secondary btn-sm" id="btn-detect-nonstd" title="DEV_FR_005_01">
+          ⚠ <span data-i18n="btnDetectNonstd">비표준 용어 검사</span>
+        </button>
+        <button class="btn btn-brand-outline btn-sm" id="btn-replace-all-nonstd" title="DEV_FR_005_02">
+          <span data-i18n="btnReplaceAll">전체 수락</span>
+        </button>
+      </div>
+    </div>
+    <div class="pane-body" style="padding:14px 20px; overflow:auto; flex:1;">
+      <div class="row-gap" style="margin-bottom:10px;">
+        <span class="stat-pill"><span data-i18n="totalReqs">총 요구사항</span> <span class="num" id="stat-total">0</span></span>
+        <span class="stat-pill"><span data-i18n="nonstdFound">비표준 용어</span> <span class="num" id="stat-nonstd">0</span></span>
+        <span class="stat-pill"><span data-i18n="entityCount">엔터티</span> <span class="num" id="stat-entities">0</span></span>
+        <span class="stat-pill"><span data-i18n="termCount">용어</span> <span class="num" id="stat-terms">0</span></span>
+      </div>
+
+      <div class="row-gap" style="margin-bottom:10px;">
+        <input id="search-review" class="input" type="text" placeholder="검색..." style="max-width:280px;" />
+        <select id="filter-priority" class="input" style="max-width:140px;">
+          <option value="">전체 우선순위</option>
+          <option value="MUST">MUST</option>
+          <option value="SHOULD">SHOULD</option>
+          <option value="COULD">COULD</option>
+          <option value="WONT">WONT</option>
+        </select>
+      </div>
+
+      <div class="data-table-wrap">
+        <table class="data-table" id="review-table">
+          <thead>
+            <tr>
+              <th style="width:160px;">req_id</th>
+              <th>req_name / 설명</th>
+              <th style="width:100px;">priority</th>
+              <th style="width:120px;">상태</th>
+            </tr>
+          </thead>
+          <tbody id="review-tbody">
+            <tr><td colspan="4">
+              <div class="state-panel">
+                <div class="state-icon">📭</div>
+                <div class="state-title" data-i18n="reqEmptyTitle">요구사항이 없습니다</div>
+                <div class="state-desc" data-i18n="reqEmptyDesc">우측 상단 [불러오기] 버튼으로 DEV REQ JSON 파일을 로드하세요.</div>
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ====================================================================
+     STATUS BAR
+==================================================================== -->
+<footer class="status-bar" role="status">
+  <span><span class="dot" id="status-llm-dot"></span> LLM <span id="status-llm">대기</span></span>
+  <span>|</span>
+  <span data-i18n="statusReqs">요구사항</span>: <strong id="status-reqs">0</strong>
+  <span>|</span>
+  <span data-i18n="statusEntities">엔터티</span>: <strong id="status-entities">0</strong>
+  <span>|</span>
+  <span data-i18n="statusRels">관계</span>: <strong id="status-rels">0</strong>
+  <span>|</span>
+  <span data-i18n="statusTerms">용어</span>: <strong id="status-terms">0</strong>
+  <span class="spacer"></span>
+  <span class="x-small" id="status-version">v1.0 · 2026-05-07</span>
+</footer>
+
+<!-- ====================================================================
+     TOAST CONTAINER
+==================================================================== -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- ====================================================================
+     MODAL TEMPLATE
+==================================================================== -->
+<div class="modal-overlay" id="modal-confirm" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="confirm-title">확인</div>
+      <button class="btn-icon" data-close="confirm">✕</button>
+    </div>
+    <div class="modal-body" id="confirm-body">정말로 진행하시겠습니까?</div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="confirm" data-i18n="btnCancel">취소</button>
+      <button class="btn btn-danger" id="confirm-ok" data-i18n="btnConfirm">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     DRAWER: ENTITY EDITOR
+==================================================================== -->
+<div class="drawer-overlay" id="drawer-entity">
+  <div class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title" id="entity-drawer-title">엔터티 편집</div>
+      <button class="btn-icon" data-close="entity">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="form-group">
+        <label class="form-label">엔터티명 <span class="required">*</span></label>
+        <input class="input" id="entity-name" type="text" maxlength="100" placeholder="예: 요구사항" />
+        <span class="form-hint">고유한 이름, 최대 100자</span>
+      </div>
+      <div class="form-group" style="margin-top:12px;">
+        <label class="form-label">설명 <span class="required">*</span></label>
+        <textarea class="input" id="entity-desc" placeholder="비즈니스 맥락에서의 설명을 입력하세요"></textarea>
+      </div>
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">속성</label>
+        <div id="entity-attrs"></div>
+        <button class="btn btn-brand-outline btn-sm" id="btn-add-attr" style="margin-top:6px;">+ 속성 추가</button>
+      </div>
+    </div>
+    <div class="drawer-footer">
+      <button class="btn btn-secondary" data-close="entity">취소</button>
+      <button class="btn btn-primary" id="entity-save">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     DRAWER: RELATIONSHIP EDITOR
+==================================================================== -->
+<div class="drawer-overlay" id="drawer-rel">
+  <div class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title" id="rel-drawer-title">관계 편집</div>
+      <button class="btn-icon" data-close="rel">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="form-group">
+        <label class="form-label">소스 엔터티 <span class="required">*</span></label>
+        <select class="input" id="rel-src"></select>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">타겟 엔터티 <span class="required">*</span></label>
+        <select class="input" id="rel-tgt"></select>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">관계 유형</label>
+        <select class="input" id="rel-type">
+          <option value="association">association</option>
+          <option value="aggregation">aggregation</option>
+          <option value="composition">composition</option>
+          <option value="inheritance">inheritance</option>
+          <option value="dependency">dependency</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+        <div class="form-group">
+          <label class="form-label">소스 카디널리티</label>
+          <select class="input" id="rel-src-card">
+            <option value="one">one</option>
+            <option value="many">many</option>
+            <option value="zero-or-one">zero-or-one</option>
+            <option value="zero-or-many">zero-or-many</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">타겟 카디널리티</label>
+          <select class="input" id="rel-tgt-card">
+            <option value="one">one</option>
+            <option value="many">many</option>
+            <option value="zero-or-one">zero-or-one</option>
+            <option value="zero-or-many">zero-or-many</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">레이블</label>
+        <input class="input" id="rel-label" type="text" placeholder="예: has, contains, defines" />
+      </div>
+    </div>
+    <div class="drawer-footer">
+      <button class="btn btn-secondary" data-close="rel">취소</button>
+      <button class="btn btn-primary" id="rel-save">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     DRAWER: TERM EDITOR
+==================================================================== -->
+<div class="drawer-overlay" id="drawer-term">
+  <div class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title" id="term-drawer-title">용어 편집</div>
+      <button class="btn-icon" data-close="term">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="form-group">
+        <label class="form-label">용어명 <span class="required">*</span></label>
+        <input class="input" id="term-name" type="text" maxlength="100" placeholder="예: 요구사항" />
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">공식 정의 <span class="required">*</span></label>
+        <textarea class="input" id="term-def" placeholder="비즈니스 맥락에서의 공식 정의"></textarea>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">동의어 (쉼표로 구분)</label>
+        <input class="input" id="term-syn" type="text" placeholder="예: 소프트웨어 요구사항, 기능 명세" />
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">관련 엔터티</label>
+        <select class="input" id="term-related" multiple size="5"></select>
+        <span class="form-hint">Ctrl/Cmd+클릭으로 다중 선택</span>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">비고</label>
+        <textarea class="input" id="term-note" placeholder="(선택)"></textarea>
+      </div>
+    </div>
+    <div class="drawer-footer">
+      <button class="btn btn-secondary" data-close="term">취소</button>
+      <button class="btn btn-primary" id="term-save">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     DRAWER: LLM RESULT PANEL
+==================================================================== -->
+<div class="drawer-overlay" id="drawer-llm">
+  <div class="drawer drawer-wide">
+    <div class="drawer-header">
+      <div class="drawer-title" id="llm-drawer-title">🤖 LLM 결과</div>
+      <button class="btn-icon" data-close="llm">✕</button>
+    </div>
+    <div class="drawer-body" id="llm-drawer-body"></div>
+    <div class="drawer-footer">
+      <button class="btn btn-secondary" id="llm-reject-all">전체 거부</button>
+      <button class="btn btn-primary" id="llm-accept-all">전체 수락</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================================================================
+   RETS-MODULE-04 — Vanilla JS (백엔드 없음, 단일 HTML)
+   참조 산출물:
+     · MD04 (TDD): rets_module_04_04_tdd.md   — 테스트 시나리오·케이스
+     · MD05 (DDD): rets_module_04_05_ddd.md   — 데이터 구조 (DevRequirement / DomainModel / GlossaryStore)
+     · MD06 (SSD): rets_module_04_06_ssd.md   — 화면 구조 / 컴포넌트 사양
+     · LLM 릴레이 가이드: rets_02a_llm_relay_server_dev_guide.md
+     · 디자인 시스템: rets_02b_design_system_html/02b_design_system_ref.html
+==================================================================== */
+
+/* ──────────────────────────────────────────────────────────────────
+   1. 상수 / 환경
+────────────────────────────────────────────────────────────────── */
+const RELAY_BASE_URL = 'https://ai-relay.mooo.com:11443';
+const SYSTEM_PROMPT  =
+  '당신은 사내 요구공학 도구 스위트 RETS(Requirements Engineering Tool Suite)의 ' +
+  '*요구공학 지능화 엔진*이다. 사용자 프롬프트를 입력으로 받아, 요청한 요구공학 ' +
+  '작업을 전문성있게 수행한 후, 사용자가 요청하는 작업을 매 요청에서 요구되는 ' +
+  'JSON 형식에 정확하게 맞춰 반환하도록 한다.';
+
+const STORAGE_KEYS = {
+  APP_STATE:    'rets_m04_state',
+  DOMAIN_MODEL: 'rets_m04_domain',
+  GLOSSARY:     'rets_m04_glossary',
+  SETTINGS:     'rets_m04_settings',
+};
+
+/* ──────────────────────────────────────────────────────────────────
+   2. AppState (DDD §3 AppState 정의)
+────────────────────────────────────────────────────────────────── */
+const AppState = {
+  requirements: [],
+  requirementsLoaded: false,
+  domainModel: {
+    entities: [],
+    relationships: [],
+    metadata: {
+      projectName: 'RETS-MODULE-04',
+      createdAt: new Date().toISOString(),
+      lastModifiedAt: new Date().toISOString(),
+      version: '1.0',
+      sourceReqIds: [],
+    }
+  },
+  glossaryStore: {
+    terms: [],
+    metadata: {
+      totalTerms: 0,
+      lastUpdatedAt: new Date().toISOString(),
+      projectName: 'RETS-MODULE-04',
+      version: '1.0',
+    }
+  },
+  llmSession: { sessionId: null, teamId: '', isLoading: false, lastError: null },
+  ui: { activeTab: 'domain', theme: 'light', language: 'ko', selectedEntityId: null, selectedTermId: null },
+  pendingCandidates: { entities: [], relationships: [], glossaryTerms: [], improvements: [] },
+};
+
+/* ──────────────────────────────────────────────────────────────────
+   3. i18n (다국어 — DEV_NFR_004)
+────────────────────────────────────────────────────────────────── */
+const I18N = {
+  ko: {
+    appTitle:'도메인 모델링 및 용어 사전', appSubtitle:'— MODULE-04',
+    btnLoad:'불러오기', btnExport:'내보내기',
+    exGlossaryMd:'용어 사전 (Markdown)', exGlossaryCsv:'용어 사전 (CSV)',
+    exDiagramHtml:'도메인 모델 (HTML)', exDiagramMd:'도메인 모델 (Markdown)',
+    tabDomain:'도메인 모델', tabGlossary:'용어 사전', tabReview:'요구사항 검토',
+    domainTitle:'엔터티 / 관계',
+    btnExtractEntities:'엔터티 추출', btnSuggestRels:'관계 추천', btnReviewCompleteness:'완성도 검토',
+    entitiesLabel:'엔터티', relsLabel:'관계',
+    btnAddEntity:'엔터티 추가', btnAddRel:'관계 추가',
+    erTitle:'ER 다이어그램',
+    erEmptyTitle:'ER 다이어그램이 없습니다',
+    erEmptyDesc:'엔터티와 관계를 추가하면 자동으로 다이어그램이 그려집니다.',
+    glossaryTitle:'용어 사전',
+    btnGenerateTerms:'용어 정의 생성', btnDetectConflicts:'중복 검사', btnAddTerm:'용어 추가',
+    termDetailTitle:'용어 상세',
+    termEmptyTitle:'용어를 선택하세요',
+    termEmptyDesc:'좌측 목록에서 용어를 클릭하면 정의·동의어·관련 엔터티가 표시됩니다.',
+    reviewTitle:'요구사항 검토',
+    btnDetectNonstd:'비표준 용어 검사', btnReplaceAll:'전체 수락',
+    totalReqs:'총 요구사항', nonstdFound:'비표준 용어', entityCount:'엔터티', termCount:'용어',
+    reqEmptyTitle:'요구사항이 없습니다',
+    reqEmptyDesc:'우측 상단 [불러오기] 버튼으로 DEV REQ JSON 파일을 로드하세요.',
+    btnCancel:'취소', btnConfirm:'확인',
+    statusReqs:'요구사항', statusEntities:'엔터티', statusRels:'관계', statusTerms:'용어',
+  },
+  en: {
+    appTitle:'Domain Modeling & Glossary', appSubtitle:'— MODULE-04',
+    btnLoad:'Load', btnExport:'Export',
+    exGlossaryMd:'Glossary (Markdown)', exGlossaryCsv:'Glossary (CSV)',
+    exDiagramHtml:'Domain Model (HTML)', exDiagramMd:'Domain Model (Markdown)',
+    tabDomain:'Domain Model', tabGlossary:'Glossary', tabReview:'Requirements Review',
+    domainTitle:'Entities / Relationships',
+    btnExtractEntities:'Extract Entities', btnSuggestRels:'Suggest Relations', btnReviewCompleteness:'Review',
+    entitiesLabel:'Entities', relsLabel:'Relationships',
+    btnAddEntity:'Add Entity', btnAddRel:'Add Relation',
+    erTitle:'ER Diagram',
+    erEmptyTitle:'No ER diagram yet',
+    erEmptyDesc:'Add entities and relationships to auto-render the diagram.',
+    glossaryTitle:'Glossary',
+    btnGenerateTerms:'Generate Terms', btnDetectConflicts:'Detect Conflicts', btnAddTerm:'Add Term',
+    termDetailTitle:'Term Detail',
+    termEmptyTitle:'Select a term',
+    termEmptyDesc:'Click any term on the left to see its definition, synonyms and linked entities.',
+    reviewTitle:'Requirements Review',
+    btnDetectNonstd:'Detect Non-standard', btnReplaceAll:'Accept All',
+    totalReqs:'Total Reqs', nonstdFound:'Non-standard', entityCount:'Entities', termCount:'Terms',
+    reqEmptyTitle:'No requirements loaded',
+    reqEmptyDesc:'Click [Load] in the header to import a DEV REQ JSON file.',
+    btnCancel:'Cancel', btnConfirm:'Confirm',
+    statusReqs:'Reqs', statusEntities:'Entities', statusRels:'Rels', statusTerms:'Terms',
+  }
+};
+
+function t(key){ return (I18N[AppState.ui.language] || I18N.ko)[key] || key; }
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k = el.getAttribute('data-i18n');
+    el.textContent = t(k);
+  });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   4. 유틸
+────────────────────────────────────────────────────────────────── */
+function uid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+function isoNow(){ return new Date().toISOString(); }
+function clone(x){ return JSON.parse(JSON.stringify(x)); }
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function fmtDate(d){
+  const dt = new Date(d || Date.now());
+  return dt.getFullYear()+''+String(dt.getMonth()+1).padStart(2,'0')+String(dt.getDate()).padStart(2,'0');
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   5. localStorage 직렬화
+────────────────────────────────────────────────────────────────── */
+function saveSettings(){
+  try{
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({
+      theme: AppState.ui.theme,
+      language: AppState.ui.language,
+      teamId: AppState.llmSession.teamId,
+    }));
+  }catch(e){ /* quota or disabled — ignore */ }
+}
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    if(!raw) return;
+    const s = JSON.parse(raw);
+    if(s.theme){ AppState.ui.theme = s.theme; }
+    if(s.language){ AppState.ui.language = s.language; }
+    if(s.teamId){ AppState.llmSession.teamId = s.teamId; }
+  }catch(e){ /* ignore */ }
+}
+function persistDomain(){
+  try{ localStorage.setItem(STORAGE_KEYS.DOMAIN_MODEL, JSON.stringify(AppState.domainModel)); }catch(e){}
+}
+function persistGlossary(){
+  try{ localStorage.setItem(STORAGE_KEYS.GLOSSARY, JSON.stringify(AppState.glossaryStore)); }catch(e){}
+}
+function loadPersisted(){
+  try{
+    const d = localStorage.getItem(STORAGE_KEYS.DOMAIN_MODEL);
+    if(d){ AppState.domainModel = JSON.parse(d); }
+    const g = localStorage.getItem(STORAGE_KEYS.GLOSSARY);
+    if(g){ AppState.glossaryStore = JSON.parse(g); }
+  }catch(e){}
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   6. Toast (DEV_NFR_003_06 — alert/confirm 금지)
+────────────────────────────────────────────────────────────────── */
+function toast(msg, type='info', title=''){
+  const c = document.getElementById('toast-container');
+  const node = document.createElement('div');
+  node.className = 'toast toast-' + type;
+  const icon = ({success:'✓', error:'⛔', warning:'⚠', info:'ℹ'})[type] || 'ℹ';
+  node.innerHTML = `
+    <div class="toast-icon">${icon}</div>
+    <div class="toast-body">
+      ${title?`<div class="toast-title">${escapeHtml(title)}</div>`:''}
+      <div class="toast-msg">${escapeHtml(msg)}</div>
+    </div>
+    <button class="toast-close">×</button>`;
+  node.querySelector('.toast-close').onclick = ()=>removeToast(node);
+  c.appendChild(node);
+  // limit 4
+  while(c.children.length > 4){ c.removeChild(c.firstChild); }
+  setTimeout(()=>removeToast(node), 5000);
+}
+function removeToast(node){
+  if(!node || !node.parentNode) return;
+  node.classList.add('removing');
+  setTimeout(()=>{ if(node.parentNode) node.parentNode.removeChild(node); }, 220);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   7. Modal / Drawer (window.confirm 금지)
+────────────────────────────────────────────────────────────────── */
+function openConfirm({ title, body, okLabel='확인', danger=true, onOk }){
+  const overlay = document.getElementById('modal-confirm');
+  overlay.querySelector('#confirm-title').textContent = title;
+  overlay.querySelector('#confirm-body').innerHTML = body;
+  const okBtn = overlay.querySelector('#confirm-ok');
+  okBtn.textContent = okLabel;
+  okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+  okBtn.onclick = ()=>{ closeOverlay('confirm'); onOk && onOk(); };
+  overlay.classList.add('open');
+}
+function closeOverlay(key){
+  const map = {
+    confirm:'modal-confirm', entity:'drawer-entity', rel:'drawer-rel',
+    term:'drawer-term', llm:'drawer-llm'
+  };
+  const el = document.getElementById(map[key]);
+  if(el) el.classList.remove('open');
+}
+document.querySelectorAll('[data-close]').forEach(b=>{
+  b.addEventListener('click', ()=>closeOverlay(b.getAttribute('data-close')));
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape'){
+    ['confirm','entity','rel','term','llm'].forEach(closeOverlay);
+  }
+});
+
+/* ──────────────────────────────────────────────────────────────────
+   8. LLM 릴레이 서버 클라이언트
+   (rets_02a_llm_relay_server_dev_guide.md §3, §4 준수)
+────────────────────────────────────────────────────────────────── */
+async function initLlmSession(){
+  const teamId = (AppState.llmSession.teamId || '').trim();
+  if(!teamId){
+    toast('team_id를 먼저 입력하세요. (헤더 우측)', 'warning', '세션 생성 불가');
+    return null;
+  }
+  try{
+    setLlmStatus('연결 중', 'warn');
+    const res = await fetch(RELAY_BASE_URL + '/chat/new', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ team_id: teamId, system_prompt: SYSTEM_PROMPT })
+    });
+    if(!res.ok) throw new Error('세션 생성 실패: ' + res.status);
+    const data = await res.json();
+    AppState.llmSession.sessionId = data.session_id;
+    AppState.llmSession.lastError = null;
+    setLlmStatus('세션 ' + (data.session_id||'').slice(0,8), 'ok');
+    toast('LLM 세션이 생성되었습니다.', 'success', 'session');
+    return data.session_id;
+  }catch(err){
+    AppState.llmSession.lastError = err.message;
+    setLlmStatus('오류', 'err');
+    toast(err.message, 'error', 'LLM');
+    return null;
+  }
+}
+async function sendMessage(prompt){
+  // 세션이 없으면 oneshot으로 fallback (가이드 §3.3)
+  if(!AppState.llmSession.sessionId){
+    const sid = await initLlmSession();
+    if(!sid){
+      // oneshot fallback
+      return await sendOneshot(prompt);
+    }
+  }
+  const teamId = AppState.llmSession.teamId;
+  const sid = AppState.llmSession.sessionId;
+  try{
+    setLlmStatus('요청 중', 'warn');
+    const res = await fetch(RELAY_BASE_URL + '/chat/' + sid, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ team_id: teamId, message: prompt })
+    });
+    if(!res.ok){
+      // 세션 만료 시 한 번 재시도
+      if(res.status === 404 || res.status === 410){
+        AppState.llmSession.sessionId = null;
+        const newSid = await initLlmSession();
+        if(newSid){
+          return await sendMessage(prompt);
+        }
+      }
+      throw new Error('메시지 전송 실패: ' + res.status);
+    }
+    const data = await res.json();
+    setLlmStatus('세션 ' + sid.slice(0,8), 'ok');
+    return data.response;
+  }catch(err){
+    AppState.llmSession.lastError = err.message;
+    setLlmStatus('오류', 'err');
+    throw err;
+  }
+}
+async function sendOneshot(prompt){
+  const teamId = (AppState.llmSession.teamId || '').trim();
+  if(!teamId) throw new Error('team_id가 필요합니다.');
+  const res = await fetch(RELAY_BASE_URL + '/chat/oneshot', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ team_id: teamId, message: prompt, system_prompt: SYSTEM_PROMPT })
+  });
+  if(!res.ok) throw new Error('Oneshot 실패: ' + res.status);
+  const data = await res.json();
+  return data.response;
+}
+function parseLlmJson(responseText){
+  if(typeof responseText !== 'string') return responseText;
+  // 마크다운 코드 펜스 제거
+  let cleaned = responseText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  // 추가 안전: 첫 { 부터 마지막 } 까지 추출
+  const first = cleaned.indexOf('{');
+  const last  = cleaned.lastIndexOf('}');
+  if(first > 0 && last > first){ cleaned = cleaned.slice(first, last+1); }
+  try{
+    return JSON.parse(cleaned);
+  }catch(e){
+    throw new Error('LLM JSON 파싱 오류: ' + e.message);
+  }
+}
+function setLlmStatus(label, type){
+  document.getElementById('status-llm').textContent = label;
+  const dot = document.getElementById('status-llm-dot');
+  dot.classList.remove('ok','err','warn');
+  if(type) dot.classList.add(type);
+  AppState.llmSession.isLoading = (type==='warn');
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   9. 요구사항 (DEV REQ) 로드 및 표시
+   (DDD-01 / TDD TC-001 ~ TC-003)
+────────────────────────────────────────────────────────────────── */
+function validateDevReqEntry(req){
+  const errs = [];
+  if(typeof req !== 'object' || req == null) return ['항목이 객체가 아닙니다'];
+  if(!req.req_id) errs.push('req_id 누락');
+  if(!/^DEV_(FR|NFR)_\d{3}(_\d{2}){0,4}$/.test(req.req_id || '')) errs.push('req_id 패턴 불일치');
+  if(!req.req_name) errs.push('req_name 누락');
+  if(req.req_type !== 'DEV') errs.push('req_type 이 DEV가 아님');
+  return errs;
+}
+function loadDevReqJson(text){
+  let arr;
+  try{ arr = JSON.parse(text); }
+  catch(e){
+    toast('JSON 파싱 실패: ' + e.message, 'error', '파일');
+    return;
+  }
+  if(!Array.isArray(arr)){
+    toast('DEV REQ JSON은 배열이어야 합니다.', 'error', '스키마');
+    return;
+  }
+  const valid = [];
+  let skipped = 0;
+  arr.forEach(r=>{
+    const e = validateDevReqEntry(r);
+    if(e.length === 0){ valid.push(r); }
+    else{ skipped++; }
+  });
+  AppState.requirements = valid;
+  AppState.requirementsLoaded = true;
+  AppState.domainModel.metadata.sourceReqIds = valid.map(r=>r.req_id);
+  toast(`총 ${valid.length}개 요구사항 로드 완료${skipped?` (${skipped}건 스킵)`:''}`, skipped?'warning':'success', '불러오기');
+  renderAll();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   10. 도메인 엔터티 / 관계 — CRUD
+   (DDD-02 / SSD §3 / TDD TC-013~015, TC-022~024)
+────────────────────────────────────────────────────────────────── */
+function findEntity(id){ return AppState.domainModel.entities.find(e=>e.id===id); }
+function findRel(id){ return AppState.domainModel.relationships.find(r=>r.id===id); }
+
+function upsertEntity(input, sourceType='manual'){
+  const now = isoNow();
+  // 이름 중복 검사 (동일 id가 아닌 경우)
+  const existsByName = AppState.domainModel.entities.find(
+    e=> e.name === input.name && e.id !== input.id
+  );
+  if(existsByName){ toast(`엔터티명 "${input.name}" 가 이미 있습니다.`, 'warning', '중복'); return null; }
+
+  if(input.id){
+    const e = findEntity(input.id);
+    if(!e) return null;
+    Object.assign(e, input, { updatedAt: now });
+    persistDomain(); return e;
+  }
+  const ent = {
+    id: uid('ent'),
+    name: input.name, description: input.description || '',
+    attributes: input.attributes || [],
+    sourceType, status: input.status || 'confirmed',
+    linkedGlossaryTermIds: [],
+    createdAt: now, updatedAt: now,
+  };
+  AppState.domainModel.entities.push(ent);
+  persistDomain();
+  return ent;
+}
+function deleteEntity(id){
+  const e = findEntity(id); if(!e) return;
+  AppState.domainModel.entities = AppState.domainModel.entities.filter(x=>x.id!==id);
+  // 관련 관계도 제거 (SSD §3.2 entity 삭제 시 관계도 제거)
+  AppState.domainModel.relationships = AppState.domainModel.relationships.filter(
+    r=> r.sourceEntityId !== id && r.targetEntityId !== id
+  );
+  // 용어 사전의 relatedEntityIds 도 정리
+  AppState.glossaryStore.terms.forEach(tm=>{
+    tm.relatedEntityIds = (tm.relatedEntityIds || []).filter(rid=>rid!==id);
+  });
+  persistDomain(); persistGlossary();
+}
+function upsertRelationship(input, sourceType='manual'){
+  if(!input.sourceEntityId || !input.targetEntityId){
+    toast('소스/타겟 엔터티가 필요합니다.', 'warning'); return null;
+  }
+  if(input.sourceEntityId === input.targetEntityId){
+    toast('동일 엔터티 자기 참조는 허용되지 않습니다.', 'warning'); return null;
+  }
+  const now = isoNow();
+  if(input.id){
+    const r = findRel(input.id);
+    if(!r) return null;
+    Object.assign(r, input, { updatedAt: now });
+    persistDomain(); return r;
+  }
+  const rel = {
+    id: uid('rel'),
+    sourceEntityId: input.sourceEntityId,
+    targetEntityId: input.targetEntityId,
+    relationType: input.relationType || 'association',
+    label: input.label || '',
+    sourceCardinality: input.sourceCardinality || 'one',
+    targetCardinality: input.targetCardinality || 'many',
+    sourceType,
+    status: input.status || 'confirmed',
+    createdAt: now, updatedAt: now,
+  };
+  AppState.domainModel.relationships.push(rel);
+  persistDomain();
+  return rel;
+}
+function deleteRelationship(id){
+  AppState.domainModel.relationships = AppState.domainModel.relationships.filter(r=>r.id!==id);
+  persistDomain();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   11. 용어 사전 — CRUD / 충돌 탐지 / 검색
+   (DDD-03 / SSD §4 / TDD TC-032~037)
+────────────────────────────────────────────────────────────────── */
+function findTerm(id){ return AppState.glossaryStore.terms.find(t=>t.id===id); }
+
+function upsertTerm(input, sourceType='manual'){
+  const now = isoNow();
+  const dupByName = AppState.glossaryStore.terms.find(t=> t.term===input.term && t.id!==input.id);
+  if(dupByName){ toast(`용어 "${input.term}" 가 이미 있습니다.`, 'warning'); return null; }
+
+  if(input.id){
+    const t = findTerm(input.id);
+    if(!t) return null;
+    Object.assign(t, input, { updatedAt: now });
+    AppState.glossaryStore.metadata.totalTerms = AppState.glossaryStore.terms.length;
+    AppState.glossaryStore.metadata.lastUpdatedAt = now;
+    persistGlossary(); return t;
+  }
+  const term = {
+    id: uid('trm'),
+    term: input.term, definition: input.definition || '',
+    synonyms: input.synonyms || [],
+    relatedEntityIds: input.relatedEntityIds || [],
+    sourceType, status: input.status || 'active',
+    note: input.note || '', conflictsWith: [], mergedFrom: [],
+    createdAt: now, updatedAt: now,
+  };
+  AppState.glossaryStore.terms.push(term);
+  AppState.glossaryStore.metadata.totalTerms = AppState.glossaryStore.terms.length;
+  AppState.glossaryStore.metadata.lastUpdatedAt = now;
+  persistGlossary();
+  return term;
+}
+function deleteTerm(id){
+  AppState.glossaryStore.terms = AppState.glossaryStore.terms.filter(t=>t.id!==id);
+  AppState.glossaryStore.metadata.totalTerms = AppState.glossaryStore.terms.length;
+  persistGlossary();
+}
+function detectConflicts(){
+  const terms = AppState.glossaryStore.terms;
+  const pairs = [];
+  // 1. 완전 일치 (이름)
+  const byName = {};
+  terms.forEach(t=>{
+    const k = (t.term||'').trim().toLowerCase();
+    if(!k) return;
+    (byName[k] = byName[k] || []).push(t);
+  });
+  Object.values(byName).forEach(arr=>{
+    if(arr.length > 1){
+      for(let i=0;i<arr.length-1;i++){
+        for(let j=i+1;j<arr.length;j++){
+          pairs.push({ termIdA: arr[i].id, termIdB: arr[j].id, reason:'exact_match' });
+        }
+      }
+    }
+  });
+  // 2. 동의어 중복
+  for(let i=0;i<terms.length;i++){
+    for(let j=i+1;j<terms.length;j++){
+      const aSyn = new Set([...(terms[i].synonyms||[]), terms[i].term].map(s=>(s||'').trim().toLowerCase()));
+      const bSyn = new Set([...(terms[j].synonyms||[]), terms[j].term].map(s=>(s||'').trim().toLowerCase()));
+      const overlap = [...aSyn].some(s=>s && bSyn.has(s));
+      if(overlap && terms[i].id !== terms[j].id){
+        // 이미 exact_match로 잡혔는지 검사
+        const exists = pairs.some(p=>(p.termIdA===terms[i].id && p.termIdB===terms[j].id) || (p.termIdB===terms[i].id && p.termIdA===terms[j].id));
+        if(!exists){
+          pairs.push({ termIdA: terms[i].id, termIdB: terms[j].id, reason:'synonym_overlap' });
+        }
+      }
+    }
+  }
+  // 마킹
+  AppState.glossaryStore.terms.forEach(t=>{ t.conflictsWith = []; });
+  pairs.forEach(p=>{
+    const a = findTerm(p.termIdA), b = findTerm(p.termIdB);
+    if(a){ a.conflictsWith = a.conflictsWith||[]; if(!a.conflictsWith.includes(p.termIdB)) a.conflictsWith.push(p.termIdB); }
+    if(b){ b.conflictsWith = b.conflictsWith||[]; if(!b.conflictsWith.includes(p.termIdA)) b.conflictsWith.push(p.termIdA); }
+  });
+  persistGlossary();
+  return pairs;
+}
+function mergeTerms(keepId, mergedId){
+  const keep = findTerm(keepId), drop = findTerm(mergedId);
+  if(!keep || !drop) return;
+  // 동의어/관련엔터티 통합
+  const synSet = new Set([...(keep.synonyms||[]), drop.term, ...(drop.synonyms||[])]);
+  synSet.delete(keep.term);
+  keep.synonyms = [...synSet].filter(Boolean);
+  const relSet = new Set([...(keep.relatedEntityIds||[]), ...(drop.relatedEntityIds||[])]);
+  keep.relatedEntityIds = [...relSet];
+  keep.mergedFrom = [...(keep.mergedFrom||[]), drop.id];
+  keep.updatedAt = isoNow();
+  AppState.glossaryStore.terms = AppState.glossaryStore.terms.filter(t=>t.id !== drop.id);
+  AppState.glossaryStore.metadata.totalTerms = AppState.glossaryStore.terms.length;
+  persistGlossary();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   12. 비표준 용어 탐지 (DDD-01._nonStandardTerms / TDD TC-040~042)
+────────────────────────────────────────────────────────────────── */
+function detectNonStandardTerms(){
+  const terms = AppState.glossaryStore.terms.filter(t=>t.status==='active' || t.status==='candidate');
+  // 동의어 → 표준 매핑 사전
+  const synMap = []; // [{ syn, standard, termId }]
+  terms.forEach(t=>{
+    (t.synonyms||[]).forEach(s=>{
+      const ss = (s||'').trim();
+      if(ss && ss !== t.term){
+        synMap.push({ syn: ss, standard: t.term, termId: t.id });
+      }
+    });
+  });
+  let totalCount = 0;
+  AppState.requirements.forEach(req=>{
+    req._nonStandardTerms = [];
+    const haystack = (req.req_name||'') + ' ' + (req.description||'');
+    synMap.forEach(({syn, standard, termId})=>{
+      if(!syn) return;
+      const re = new RegExp(syn.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&'), 'g');
+      if(re.test(haystack)){
+        req._nonStandardTerms.push({ term: syn, standardTerm: standard, position:'description' });
+        totalCount++;
+      }
+    });
+  });
+  return totalCount;
+}
+function replaceNonStandardInReq(req, accept=true){
+  if(!req._nonStandardTerms || !req._nonStandardTerms.length) return;
+  if(accept){
+    req._nonStandardTerms.forEach(m=>{
+      const re = new RegExp(m.term.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&'), 'g');
+      if(req.req_name) req.req_name = req.req_name.replace(re, m.standardTerm);
+      if(req.description) req.description = req.description.replace(re, m.standardTerm);
+    });
+  }
+  req._nonStandardTerms = [];
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   13. Mermaid ER 다이어그램 변환 (DDD §2.2.4 / TDD TC-025)
+────────────────────────────────────────────────────────────────── */
+const CARD_MAP = {
+  'one':         { left:'||', right:'||' },
+  'many':        { left:'}|', right:'|{' },
+  'zero-or-one': { left:'|o', right:'o|' },
+  'zero-or-many':{ left:'}o', right:'o{' },
+};
+function safeMermaidName(s){
+  return (s||'_').replace(/[^A-Za-z0-9가-힣_]/g,'_');
+}
+function toMermaidER(model){
+  const lines = ['erDiagram'];
+  const ents = (model.entities||[]).filter(e=>e.status!=='rejected');
+  const rels = (model.relationships||[]).filter(r=>r.status!=='rejected');
+  ents.forEach(e=>{
+    lines.push(`  ${safeMermaidName(e.name)} {`);
+    if(e.attributes && e.attributes.length){
+      e.attributes.forEach(a=>{
+        const type = (a.type||'string').replace(/[^A-Za-z0-9_]/g,'');
+        const name = (a.name||'attr').replace(/[^A-Za-z0-9_]/g,'_');
+        const flag = a.isPrimaryKey ? ' PK' : '';
+        lines.push(`    ${type} ${name}${flag}`);
+      });
+    } else {
+      lines.push('    string id PK');
+    }
+    lines.push('  }');
+  });
+  rels.forEach(r=>{
+    const s = ents.find(e=>e.id===r.sourceEntityId);
+    const t = ents.find(e=>e.id===r.targetEntityId);
+    if(!s || !t) return;
+    const sc = CARD_MAP[r.sourceCardinality]?.left || '||';
+    const tc = CARD_MAP[r.targetCardinality]?.right || '||';
+    const label = (r.label||r.relationType||'').replace(/"/g,'\\"');
+    lines.push(`  ${safeMermaidName(s.name)} ${sc}--${tc} ${safeMermaidName(t.name)} : "${label}"`);
+  });
+  return lines.join('\n');
+}
+let _mermaidIdCounter = 0;
+async function renderER(){
+  const container = document.getElementById('er-container');
+  const model = AppState.domainModel;
+  const ents = model.entities.filter(e=>e.status!=='rejected');
+  if(!ents.length){
+    container.innerHTML = `
+      <div class="state-panel">
+        <div class="state-icon">🗺</div>
+        <div class="state-title">${escapeHtml(t('erEmptyTitle'))}</div>
+        <div class="state-desc">${escapeHtml(t('erEmptyDesc'))}</div>
+      </div>`;
+    return;
+  }
+  const code = toMermaidER(model);
+  const id = 'mermaid-er-' + (++_mermaidIdCounter);
+  container.innerHTML = `<div id="${id}"></div>`;
+  try{
+    if(window.mermaid){
+      mermaid.initialize({ startOnLoad: false, theme: AppState.ui.theme==='dark'?'dark':'default', securityLevel:'loose' });
+      const { svg } = await mermaid.render(id+'-svg', code);
+      container.innerHTML = svg;
+    } else {
+      throw new Error('mermaid library not loaded');
+    }
+  }catch(err){
+    // Fallback (TDD TC-025: 렌더링 실패 시 코드 블록)
+    container.innerHTML = `
+      <div style="width:100%;">
+        <div class="state-icon" style="font-size:18px;">⚠</div>
+        <div class="state-title">Mermaid 렌더링 실패 — 코드로 표시</div>
+        <pre style="background:var(--surface-2); padding:12px; border-radius:6px; font-size:12px; white-space:pre-wrap;">${escapeHtml(code)}</pre>
+      </div>`;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   14. LLM 프롬프트 빌더 (각 호출 user prompt에 JSON 스키마 포함)
+   (LLM 가이드 §4.1 ⚠ 필수 규칙)
+────────────────────────────────────────────────────────────────── */
+function reqsToCompactString(maxItems=80){
+  return AppState.requirements.slice(0, maxItems).map(r=>{
+    return `- ${r.req_id} (L${r.req_level||'?'}): ${r.req_name} | ${r.description||''}`;
+  }).join('\n');
+}
+function entitiesToCompactString(){
+  return AppState.domainModel.entities.filter(e=>e.status!=='rejected').map(e=>{
+    return `- ${e.name} (${e.id}): ${e.description||''}`;
+  }).join('\n');
+}
+function termsToCompactString(){
+  return AppState.glossaryStore.terms.map(t=>{
+    return `- ${t.term}: ${t.definition||''}`;
+  }).join('\n');
+}
+
+function buildEntityExtractionPrompt(){
+  return `다음 요구사항 목록에서 핵심 도메인 엔터티 후보를 추출하라.
+
+### 요구사항 목록
+${reqsToCompactString()}
+
+## Output Format (STRICT JSON ONLY)
+반드시 아래 JSON 스키마만 출력하라. 설명·마크다운·코드 펜스는 포함하지 말 것.
+{
+  "entities": [
+    {
+      "name": "<string, 엔터티명>",
+      "description": "<string, 1~2문장 설명>",
+      "attributes": [
+        { "name": "<string>", "type": "string|integer|boolean|date|float", "isPrimaryKey": <boolean>, "isRequired": <boolean> }
+      ]
+    }
+  ]
+}
+가능하면 5~10개의 핵심 엔터티만 추출한다. 너무 추상적이거나 기술 용어(예: API, JSON)는 제외한다.`;
+}
+
+function buildRelationshipPrompt(){
+  return `다음 엔터티 목록을 기반으로 엔터티 간 관계를 추천하라.
+
+### 엔터티 목록
+${entitiesToCompactString()}
+
+## Output Format (STRICT JSON ONLY)
+반드시 아래 JSON 스키마만 출력하라. 설명·마크다운·코드 펜스는 포함하지 말 것.
+{
+  "relationships": [
+    {
+      "sourceEntityName": "<string, 위 목록의 name 중 하나>",
+      "targetEntityName": "<string, 위 목록의 name 중 하나>",
+      "relationType": "association|aggregation|composition|inheritance|dependency",
+      "label": "<string, 관계 설명 1~3단어>",
+      "sourceCardinality": "one|many|zero-or-one|zero-or-many",
+      "targetCardinality": "one|many|zero-or-one|zero-or-many"
+    }
+  ]
+}
+self-loop(동일 source/target)는 만들지 않는다. 가능하면 3~7개 관계.`;
+}
+
+function buildGlossaryPrompt(){
+  return `다음 도메인 엔터티들에 대해 비즈니스 맥락을 반영한 용어 정의(Glossary)를 생성하라.
+
+### 엔터티 목록
+${entitiesToCompactString()}
+
+### 참고 — 이미 등록된 용어 (중복 생성 금지)
+${termsToCompactString() || '(없음)'}
+
+## Output Format (STRICT JSON ONLY)
+반드시 아래 JSON 스키마만 출력하라. 설명·마크다운·코드 펜스는 포함하지 말 것.
+{
+  "terms": [
+    {
+      "entityName": "<string, 위 엔터티 목록의 name>",
+      "term": "<string, 표준 용어명>",
+      "definition": "<string, 비즈니스 맥락 1~3문장>",
+      "synonyms": ["<string>"],
+      "note": "<string, 선택>"
+    }
+  ]
+}`;
+}
+
+function buildCompletenessPrompt(){
+  return `현재까지 구축된 도메인 모델과 용어 사전의 완성도를 검토하고, 누락된 항목과 개선 제안을 도출하라.
+
+### 요구사항 (요약)
+${reqsToCompactString()}
+
+### 현재 엔터티
+${entitiesToCompactString() || '(없음)'}
+
+### 현재 관계
+${(AppState.domainModel.relationships.filter(r=>r.status!=='rejected')).map(r=>{
+  const s=findEntity(r.sourceEntityId)?.name, t=findEntity(r.targetEntityId)?.name;
+  return `- ${s} -[${r.relationType}]-> ${t}: ${r.label||''}`;
+}).join('\n') || '(없음)'}
+
+### 현재 용어 사전
+${termsToCompactString() || '(없음)'}
+
+## Output Format (STRICT JSON ONLY)
+반드시 아래 JSON 스키마만 출력하라. 설명·마크다운·코드 펜스는 포함하지 말 것.
+{
+  "improvements": [
+    {
+      "type": "missing_entity|missing_relationship|missing_term|incomplete_definition",
+      "description": "<string, 무엇이 누락 또는 부족한가>",
+      "suggestion": {
+        "entityName": "<string, type가 missing_entity 또는 missing_term일 때>",
+        "entityDescription": "<string, type=missing_entity>",
+        "relationship": {
+          "sourceEntityName": "<string>",
+          "targetEntityName": "<string>",
+          "relationType": "association|aggregation|composition|inheritance|dependency",
+          "label": "<string>"
+        },
+        "termDefinition": "<string, type=missing_term 또는 incomplete_definition>"
+      },
+      "rationale": "<string, 근거>"
+    }
+  ]
+}
+가능하면 3~6개의 명확한 개선 제안만 도출한다.`;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   15. LLM 동작 — 엔터티 추출 / 관계 추천 / 용어 / 완성도
+   (TDD TC-010~015, TC-020~025, TC-030~037, TC-050~052)
+────────────────────────────────────────────────────────────────── */
+async function actExtractEntities(){
+  if(!AppState.requirements.length){
+    toast('먼저 DEV REQ JSON을 불러오세요.', 'warning'); return;
+  }
+  if(!AppState.llmSession.teamId.trim()){
+    toast('team_id를 입력하세요.', 'warning'); return;
+  }
+  showLlmDrawerLoading('엔터티 추출 중', '요구사항을 분석하여 도메인 엔터티 후보를 추출하고 있습니다...');
+  try{
+    const raw = await sendMessage(buildEntityExtractionPrompt());
+    const parsed = parseLlmJson(raw);
+    if(!parsed || !Array.isArray(parsed.entities)){
+      throw new Error('응답에 entities 배열이 없습니다.');
+    }
+    const candidates = parsed.entities.map(e=>({
+      id: uid('cand-ent'),
+      name: e.name, description: e.description || '',
+      attributes: Array.isArray(e.attributes)?e.attributes:[],
+      sourceType:'llm', status:'candidate',
+      linkedGlossaryTermIds:[],
+      createdAt: isoNow(), updatedAt: isoNow(),
+    }));
+    AppState.pendingCandidates.entities = candidates;
+    renderLlmEntityCandidates();
+    toast(`${candidates.length}개 엔터티 후보를 받았습니다.`, 'success', '엔터티 추출');
+  }catch(err){
+    closeOverlay('llm');
+    toast(err.message, 'error', '엔터티 추출 실패');
+  }
+}
+
+async function actSuggestRelationships(){
+  const ents = AppState.domainModel.entities.filter(e=>e.status!=='rejected');
+  if(ents.length < 2){
+    toast('엔터티가 2개 이상 확정되어야 합니다.', 'warning'); return;
+  }
+  if(!AppState.llmSession.teamId.trim()){
+    toast('team_id를 입력하세요.', 'warning'); return;
+  }
+  showLlmDrawerLoading('관계 추천 중', '확정된 엔터티 간의 관계 후보를 도출하고 있습니다...');
+  try{
+    const raw = await sendMessage(buildRelationshipPrompt());
+    const parsed = parseLlmJson(raw);
+    if(!parsed || !Array.isArray(parsed.relationships)){
+      throw new Error('응답에 relationships 배열이 없습니다.');
+    }
+    const findIdByName = (name)=> AppState.domainModel.entities.find(e=>e.name===name)?.id;
+    const candidates = parsed.relationships.map(r=>{
+      const sId = findIdByName(r.sourceEntityName);
+      const tId = findIdByName(r.targetEntityName);
+      if(!sId || !tId || sId===tId) return null;
+      return {
+        id: uid('cand-rel'),
+        sourceEntityId: sId, targetEntityId: tId,
+        relationType: r.relationType || 'association',
+        label: r.label || '',
+        sourceCardinality: r.sourceCardinality || 'one',
+        targetCardinality: r.targetCardinality || 'many',
+        sourceType:'llm', status:'candidate',
+        createdAt: isoNow(), updatedAt: isoNow(),
+      };
+    }).filter(Boolean);
+    AppState.pendingCandidates.relationships = candidates;
+    renderLlmRelCandidates();
+    toast(`${candidates.length}개 관계 후보를 받았습니다.`, 'success', '관계 추천');
+  }catch(err){
+    closeOverlay('llm');
+    toast(err.message, 'error', '관계 추천 실패');
+  }
+}
+
+async function actGenerateTerms(){
+  const ents = AppState.domainModel.entities.filter(e=>e.status!=='rejected');
+  if(ents.length < 1){
+    toast('엔터티가 1개 이상 필요합니다.', 'warning'); return;
+  }
+  if(!AppState.llmSession.teamId.trim()){
+    toast('team_id를 입력하세요.', 'warning'); return;
+  }
+  showLlmDrawerLoading('용어 정의 생성 중', '엔터티별 비즈니스 용어 정의를 생성하고 있습니다...');
+  try{
+    const raw = await sendMessage(buildGlossaryPrompt());
+    const parsed = parseLlmJson(raw);
+    if(!parsed || !Array.isArray(parsed.terms)){
+      throw new Error('응답에 terms 배열이 없습니다.');
+    }
+    const candidates = parsed.terms.map(tm=>{
+      const linkedEnt = AppState.domainModel.entities.find(e=>e.name===tm.entityName);
+      return {
+        id: uid('cand-trm'),
+        term: tm.term, definition: tm.definition||'',
+        synonyms: Array.isArray(tm.synonyms)?tm.synonyms:[],
+        relatedEntityIds: linkedEnt?[linkedEnt.id]:[],
+        sourceType:'llm', status:'candidate',
+        note: tm.note || '',
+        createdAt: isoNow(), updatedAt: isoNow(),
+      };
+    });
+    AppState.pendingCandidates.glossaryTerms = candidates;
+    renderLlmTermCandidates();
+    toast(`${candidates.length}개 용어 정의 후보를 받았습니다.`, 'success', '용어 생성');
+  }catch(err){
+    closeOverlay('llm');
+    toast(err.message, 'error', '용어 생성 실패');
+  }
+}
+
+async function actReviewCompleteness(){
+  if(!AppState.llmSession.teamId.trim()){
+    toast('team_id를 입력하세요.', 'warning'); return;
+  }
+  showLlmDrawerLoading('완성도 검토 중', '도메인 모델과 용어 사전 전체를 분석하고 있습니다...');
+  try{
+    const raw = await sendMessage(buildCompletenessPrompt());
+    const parsed = parseLlmJson(raw);
+    if(!parsed || !Array.isArray(parsed.improvements)){
+      throw new Error('응답에 improvements 배열이 없습니다.');
+    }
+    AppState.pendingCandidates.improvements = parsed.improvements.map(imp=>({
+      id: uid('imp'),
+      type: imp.type, description: imp.description || '',
+      suggestion: imp.suggestion || {},
+      rationale: imp.rationale || '',
+      status:'pending'
+    }));
+    renderLlmImprovements();
+    toast(`${AppState.pendingCandidates.improvements.length}개 개선 제안을 받았습니다.`, 'success', '완성도 검토');
+  }catch(err){
+    closeOverlay('llm');
+    toast(err.message, 'error', '완성도 검토 실패');
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   16. LLM 결과 패널 렌더 (SSD §6 / TDD TC-012, TC-021, TC-031, TC-052)
+────────────────────────────────────────────────────────────────── */
+function showLlmDrawerLoading(title, msg){
+  document.getElementById('llm-drawer-title').textContent = '🤖 ' + title;
+  document.getElementById('llm-drawer-body').innerHTML = `
+    <div class="state-panel">
+      <div class="spinner spinner-lg"></div>
+      <div class="state-title">${escapeHtml(title)}</div>
+      <div class="state-desc">${escapeHtml(msg)}</div>
+    </div>`;
+  document.getElementById('drawer-llm').classList.add('open');
+  document.getElementById('llm-accept-all').style.display = 'none';
+  document.getElementById('llm-reject-all').style.display = 'none';
+}
+function setLlmActionsVisible(v){
+  document.getElementById('llm-accept-all').style.display = v?'inline-flex':'none';
+  document.getElementById('llm-reject-all').style.display = v?'inline-flex':'none';
+}
+
+function renderLlmEntityCandidates(){
+  const cands = AppState.pendingCandidates.entities;
+  document.getElementById('llm-drawer-title').textContent = `🤖 엔터티 후보 (${cands.length})`;
+  const body = document.getElementById('llm-drawer-body');
+  if(!cands.length){ body.innerHTML = `<div class="state-panel"><div class="state-icon">🪧</div><div class="state-title">후보 없음</div></div>`; setLlmActionsVisible(false); return; }
+  body.innerHTML = cands.map(c=>`
+    <div class="candidate-card" data-cid="${c.id}">
+      <div class="candidate-head">
+        <div class="candidate-name">📦 ${escapeHtml(c.name)}</div>
+        <div class="candidate-actions">
+          <button class="btn btn-primary btn-sm" data-act="accept-ent" data-id="${c.id}">수락</button>
+          <button class="btn btn-danger btn-sm" data-act="reject-ent" data-id="${c.id}">거부</button>
+        </div>
+      </div>
+      <div class="text-sec small">${escapeHtml(c.description||'')}</div>
+      ${c.attributes && c.attributes.length ? `
+      <div class="candidate-meta">속성: ${c.attributes.map(a=>`<code>${escapeHtml(a.name)}${a.isPrimaryKey?' (PK)':''}</code>`).join(' ')}</div>
+      `:''}
+    </div>`).join('');
+  // bind
+  body.querySelectorAll('[data-act="accept-ent"]').forEach(b=>{
+    b.onclick = ()=> acceptEntityCandidate(b.dataset.id);
+  });
+  body.querySelectorAll('[data-act="reject-ent"]').forEach(b=>{
+    b.onclick = ()=> rejectCandidate('entities', b.dataset.id);
+  });
+  setLlmActionsVisible(true);
+  document.getElementById('llm-accept-all').onclick = ()=> acceptAllEntities();
+  document.getElementById('llm-reject-all').onclick = ()=> rejectAll('entities');
+}
+function acceptEntityCandidate(id){
+  const c = AppState.pendingCandidates.entities.find(x=>x.id===id);
+  if(!c) return;
+  upsertEntity({ name: c.name, description: c.description, attributes: c.attributes }, 'llm');
+  AppState.pendingCandidates.entities = AppState.pendingCandidates.entities.filter(x=>x.id!==id);
+  renderLlmEntityCandidates();
+  renderAll();
+  toast(`엔터티 "${c.name}" 추가됨`, 'success');
+}
+function acceptAllEntities(){
+  const list = [...AppState.pendingCandidates.entities];
+  list.forEach(c=>{
+    upsertEntity({ name: c.name, description: c.description, attributes: c.attributes }, 'llm');
+  });
+  AppState.pendingCandidates.entities = [];
+  renderLlmEntityCandidates();
+  renderAll();
+  toast(`${list.length}개 엔터티가 모두 추가되었습니다.`, 'success');
+}
+
+function renderLlmRelCandidates(){
+  const cands = AppState.pendingCandidates.relationships;
+  document.getElementById('llm-drawer-title').textContent = `🤖 관계 후보 (${cands.length})`;
+  const body = document.getElementById('llm-drawer-body');
+  if(!cands.length){ body.innerHTML = `<div class="state-panel"><div class="state-icon">🪧</div><div class="state-title">후보 없음</div></div>`; setLlmActionsVisible(false); return; }
+  body.innerHTML = cands.map(c=>{
+    const s = findEntity(c.sourceEntityId)?.name || '?';
+    const t = findEntity(c.targetEntityId)?.name || '?';
+    return `
+    <div class="candidate-card" data-cid="${c.id}">
+      <div class="candidate-head">
+        <div class="candidate-name">🔗 ${escapeHtml(s)} → ${escapeHtml(t)}</div>
+        <div class="candidate-actions">
+          <button class="btn btn-primary btn-sm" data-act="accept-rel" data-id="${c.id}">수락</button>
+          <button class="btn btn-danger btn-sm" data-act="reject-rel" data-id="${c.id}">거부</button>
+        </div>
+      </div>
+      <div class="text-sec small">유형: <code>${escapeHtml(c.relationType)}</code> · 카디널리티: ${c.sourceCardinality}/${c.targetCardinality} · 레이블: "${escapeHtml(c.label||'')}"</div>
+    </div>`;
+  }).join('');
+  body.querySelectorAll('[data-act="accept-rel"]').forEach(b=>{
+    b.onclick = ()=> acceptRelCandidate(b.dataset.id);
+  });
+  body.querySelectorAll('[data-act="reject-rel"]').forEach(b=>{
+    b.onclick = ()=> rejectCandidate('relationships', b.dataset.id);
+  });
+  setLlmActionsVisible(true);
+  document.getElementById('llm-accept-all').onclick = ()=> acceptAllRels();
+  document.getElementById('llm-reject-all').onclick = ()=> rejectAll('relationships');
+}
+function acceptRelCandidate(id){
+  const c = AppState.pendingCandidates.relationships.find(x=>x.id===id);
+  if(!c) return;
+  upsertRelationship({
+    sourceEntityId: c.sourceEntityId, targetEntityId: c.targetEntityId,
+    relationType: c.relationType, label: c.label,
+    sourceCardinality: c.sourceCardinality, targetCardinality: c.targetCardinality,
+  }, 'llm');
+  AppState.pendingCandidates.relationships = AppState.pendingCandidates.relationships.filter(x=>x.id!==id);
+  renderLlmRelCandidates();
+  renderAll();
+  toast('관계 추가됨', 'success');
+}
+function acceptAllRels(){
+  const list = [...AppState.pendingCandidates.relationships];
+  list.forEach(c=> upsertRelationship({
+    sourceEntityId: c.sourceEntityId, targetEntityId: c.targetEntityId,
+    relationType: c.relationType, label: c.label,
+    sourceCardinality: c.sourceCardinality, targetCardinality: c.targetCardinality,
+  }, 'llm'));
+  AppState.pendingCandidates.relationships = [];
+  renderLlmRelCandidates();
+  renderAll();
+  toast(`${list.length}개 관계가 모두 추가되었습니다.`, 'success');
+}
+
+function renderLlmTermCandidates(){
+  const cands = AppState.pendingCandidates.glossaryTerms;
+  document.getElementById('llm-drawer-title').textContent = `🤖 용어 후보 (${cands.length})`;
+  const body = document.getElementById('llm-drawer-body');
+  if(!cands.length){ body.innerHTML = `<div class="state-panel"><div class="state-icon">🪧</div><div class="state-title">후보 없음</div></div>`; setLlmActionsVisible(false); return; }
+  body.innerHTML = cands.map(c=>`
+    <div class="candidate-card" data-cid="${c.id}">
+      <div class="candidate-head">
+        <div class="candidate-name">📖 ${escapeHtml(c.term)}</div>
+        <div class="candidate-actions">
+          <button class="btn btn-primary btn-sm" data-act="accept-trm" data-id="${c.id}">수락</button>
+          <button class="btn btn-danger btn-sm" data-act="reject-trm" data-id="${c.id}">거부</button>
+        </div>
+      </div>
+      <div class="text-sec small">${escapeHtml(c.definition||'')}</div>
+      ${c.synonyms && c.synonyms.length ? `<div class="candidate-meta">동의어: ${c.synonyms.map(s=>`<span class="tag">${escapeHtml(s)}</span>`).join(' ')}</div>`:''}
+    </div>`).join('');
+  body.querySelectorAll('[data-act="accept-trm"]').forEach(b=>{
+    b.onclick = ()=> acceptTermCandidate(b.dataset.id);
+  });
+  body.querySelectorAll('[data-act="reject-trm"]').forEach(b=>{
+    b.onclick = ()=> rejectCandidate('glossaryTerms', b.dataset.id);
+  });
+  setLlmActionsVisible(true);
+  document.getElementById('llm-accept-all').onclick = ()=> acceptAllTerms();
+  document.getElementById('llm-reject-all').onclick = ()=> rejectAll('glossaryTerms');
+}
+function acceptTermCandidate(id){
+  const c = AppState.pendingCandidates.glossaryTerms.find(x=>x.id===id);
+  if(!c) return;
+  upsertTerm({
+    term: c.term, definition: c.definition,
+    synonyms: c.synonyms, relatedEntityIds: c.relatedEntityIds, note: c.note,
+  }, 'llm');
+  AppState.pendingCandidates.glossaryTerms = AppState.pendingCandidates.glossaryTerms.filter(x=>x.id!==id);
+  renderLlmTermCandidates();
+  renderAll();
+  toast(`용어 "${c.term}" 등록됨`, 'success');
+}
+function acceptAllTerms(){
+  const list = [...AppState.pendingCandidates.glossaryTerms];
+  list.forEach(c=> upsertTerm({
+    term: c.term, definition: c.definition,
+    synonyms: c.synonyms, relatedEntityIds: c.relatedEntityIds, note: c.note,
+  }, 'llm'));
+  AppState.pendingCandidates.glossaryTerms = [];
+  renderLlmTermCandidates();
+  renderAll();
+  toast(`${list.length}개 용어가 모두 등록되었습니다.`, 'success');
+}
+
+function renderLlmImprovements(){
+  const list = AppState.pendingCandidates.improvements;
+  document.getElementById('llm-drawer-title').textContent = `🔍 완성도 개선 제안 (${list.length})`;
+  const body = document.getElementById('llm-drawer-body');
+  if(!list.length){ body.innerHTML = `<div class="state-panel"><div class="state-icon">🪧</div><div class="state-title">제안 없음</div></div>`; setLlmActionsVisible(false); return; }
+  const groups = {
+    missing_entity:'누락 엔터티', missing_relationship:'부족한 관계 정의',
+    missing_term:'미등록 용어', incomplete_definition:'불완전한 정의'
+  };
+  let html = '';
+  Object.keys(groups).forEach(key=>{
+    const items = list.filter(i=>i.type===key && i.status==='pending');
+    if(!items.length) return;
+    html += `<div class="suggestion-group"><h4>── ${groups[key]} (${items.length}개) ──</h4>`;
+    items.forEach(it=>{
+      let suggText = '';
+      if(it.type==='missing_entity'){
+        suggText = `<code>${escapeHtml(it.suggestion?.entityName||'')}</code> — ${escapeHtml(it.suggestion?.entityDescription||'')}`;
+      } else if(it.type==='missing_relationship'){
+        const r = it.suggestion?.relationship || {};
+        suggText = `<code>${escapeHtml(r.sourceEntityName||'')} -[${escapeHtml(r.relationType||'')}]-> ${escapeHtml(r.targetEntityName||'')}</code> — ${escapeHtml(r.label||'')}`;
+      } else if(it.type==='missing_term' || it.type==='incomplete_definition'){
+        suggText = `<code>${escapeHtml(it.suggestion?.entityName||'')}</code>: ${escapeHtml(it.suggestion?.termDefinition||'')}`;
+      }
+      html += `
+      <div class="candidate-card">
+        <div class="candidate-head">
+          <div class="candidate-name">${escapeHtml(it.description||'')}</div>
+          <div class="candidate-actions">
+            <button class="btn btn-primary btn-sm" data-act="accept-imp" data-id="${it.id}">추가</button>
+            <button class="btn btn-danger btn-sm" data-act="reject-imp" data-id="${it.id}">무시</button>
+          </div>
+        </div>
+        <div class="text-sec small">${suggText}</div>
+        ${it.rationale?`<div class="candidate-meta">근거: ${escapeHtml(it.rationale)}</div>`:''}
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  body.innerHTML = html;
+  body.querySelectorAll('[data-act="accept-imp"]').forEach(b=>{
+    b.onclick = ()=> acceptImprovement(b.dataset.id);
+  });
+  body.querySelectorAll('[data-act="reject-imp"]').forEach(b=>{
+    b.onclick = ()=>{
+      const it = AppState.pendingCandidates.improvements.find(x=>x.id===b.dataset.id);
+      if(it) it.status = 'rejected';
+      renderLlmImprovements();
+    };
+  });
+  setLlmActionsVisible(false);
+}
+function acceptImprovement(id){
+  const it = AppState.pendingCandidates.improvements.find(x=>x.id===id);
+  if(!it) return;
+  if(it.type==='missing_entity'){
+    upsertEntity({
+      name: it.suggestion?.entityName || 'NewEntity',
+      description: it.suggestion?.entityDescription || '',
+      attributes: [],
+    }, 'llm');
+  } else if(it.type==='missing_relationship'){
+    const r = it.suggestion?.relationship || {};
+    const sId = AppState.domainModel.entities.find(e=>e.name===r.sourceEntityName)?.id;
+    const tId = AppState.domainModel.entities.find(e=>e.name===r.targetEntityName)?.id;
+    if(sId && tId){
+      upsertRelationship({
+        sourceEntityId: sId, targetEntityId: tId,
+        relationType: r.relationType||'association', label: r.label||'',
+        sourceCardinality:'one', targetCardinality:'many'
+      }, 'llm');
+    } else {
+      toast('관계 대상 엔터티를 찾지 못했습니다.', 'warning'); return;
+    }
+  } else if(it.type==='missing_term' || it.type==='incomplete_definition'){
+    upsertTerm({
+      term: it.suggestion?.entityName || 'NewTerm',
+      definition: it.suggestion?.termDefinition || '',
+      synonyms: [], relatedEntityIds: []
+    }, 'llm');
+  }
+  it.status = 'accepted';
+  renderLlmImprovements();
+  renderAll();
+  toast('개선 제안이 반영되었습니다.', 'success');
+}
+
+function rejectCandidate(group, id){
+  AppState.pendingCandidates[group] = AppState.pendingCandidates[group].filter(x=>x.id!==id);
+  if(group==='entities') renderLlmEntityCandidates();
+  if(group==='relationships') renderLlmRelCandidates();
+  if(group==='glossaryTerms') renderLlmTermCandidates();
+}
+function rejectAll(group){
+  AppState.pendingCandidates[group] = [];
+  if(group==='entities') renderLlmEntityCandidates();
+  if(group==='relationships') renderLlmRelCandidates();
+  if(group==='glossaryTerms') renderLlmTermCandidates();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   17. RENDER — 엔터티 / 관계 / 용어 / 검토 표
+────────────────────────────────────────────────────────────────── */
+function renderEntityList(){
+  const wrap = document.getElementById('entity-list');
+  const ents = AppState.domainModel.entities.filter(e=>e.status!=='rejected');
+  document.getElementById('count-entities').textContent = ents.length;
+  if(!ents.length){
+    wrap.innerHTML = `
+      <div class="state-panel">
+        <div class="state-icon">📭</div>
+        <div class="state-title">아직 엔터티가 없습니다</div>
+        <div class="state-desc">[엔터티 추출] 또는 [엔터티 추가] 로 시작하세요.</div>
+      </div>`;
+    return;
+  }
+  wrap.innerHTML = ents.map(e=>`
+    <div class="list-item ${AppState.ui.selectedEntityId===e.id?'selected':''}" data-id="${e.id}">
+      <div class="list-item-row">
+        <span>📦</span>
+        <div class="list-item-title truncate">${escapeHtml(e.name)}</div>
+        <span class="badge ${e.status==='confirmed'?'badge-success':'badge-warning'}">${e.status==='confirmed'?'확정':'후보'}</span>
+        ${e.sourceType==='llm'?'<span class="ai-badge">AI</span>':''}
+        <div class="list-item-actions">
+          <button class="btn btn-ghost btn-sm" data-act="edit-ent" data-id="${e.id}">편집</button>
+          <button class="btn btn-danger btn-sm" data-act="del-ent" data-id="${e.id}">삭제</button>
+        </div>
+      </div>
+      <div class="list-item-desc">${escapeHtml(e.description||'')}</div>
+      ${e.attributes && e.attributes.length ? `<div class="list-item-meta">속성: ${e.attributes.map(a=>`<code>${escapeHtml(a.name)}${a.isPrimaryKey?' PK':''}</code>`).join(' ')}</div>`:''}
+    </div>`).join('');
+  wrap.querySelectorAll('[data-act="edit-ent"]').forEach(b=>{
+    b.onclick = (ev)=>{ ev.stopPropagation(); openEntityDrawer(b.dataset.id); };
+  });
+  wrap.querySelectorAll('[data-act="del-ent"]').forEach(b=>{
+    b.onclick = (ev)=>{
+      ev.stopPropagation();
+      const e = findEntity(b.dataset.id); if(!e) return;
+      openConfirm({
+        title:'엔터티 삭제',
+        body:`<strong>'${escapeHtml(e.name)}'</strong> 엔터티를 삭제하면 연결된 관계도 함께 제거됩니다. 이 작업은 되돌릴 수 없습니다.`,
+        okLabel:'삭제',
+        onOk:()=>{ deleteEntity(b.dataset.id); renderAll(); toast('엔터티가 삭제되었습니다.', 'success'); }
+      });
+    };
+  });
+  wrap.querySelectorAll('.list-item').forEach(it=>{
+    it.onclick = ()=>{ AppState.ui.selectedEntityId = it.dataset.id; renderEntityList(); };
+  });
+}
+
+function renderRelList(){
+  const wrap = document.getElementById('rel-list');
+  const rels = AppState.domainModel.relationships.filter(r=>r.status!=='rejected');
+  document.getElementById('count-rels').textContent = rels.length;
+  if(!rels.length){
+    wrap.innerHTML = `
+      <div class="state-panel" style="min-height:80px; padding:18px;">
+        <div class="state-desc">관계가 없습니다.</div>
+      </div>`;
+    return;
+  }
+  wrap.innerHTML = rels.map(r=>{
+    const s = findEntity(r.sourceEntityId)?.name || '?';
+    const t = findEntity(r.targetEntityId)?.name || '?';
+    const sc = CARD_MAP[r.sourceCardinality]?.left || '||';
+    const tc = CARD_MAP[r.targetCardinality]?.right || '||';
+    return `
+      <div class="list-item" data-id="${r.id}">
+        <div class="list-item-row">
+          <span>🔗</span>
+          <div class="list-item-title truncate">${escapeHtml(s)} <code>${sc}--${tc}</code> ${escapeHtml(t)}</div>
+          ${r.sourceType==='llm'?'<span class="ai-badge">AI</span>':''}
+          <div class="list-item-actions">
+            <button class="btn btn-ghost btn-sm" data-act="edit-rel" data-id="${r.id}">편집</button>
+            <button class="btn btn-danger btn-sm" data-act="del-rel" data-id="${r.id}">삭제</button>
+          </div>
+        </div>
+        <div class="list-item-desc">유형: <code>${escapeHtml(r.relationType)}</code> · 레이블: "${escapeHtml(r.label||'')}"</div>
+      </div>`;
+  }).join('');
+  wrap.querySelectorAll('[data-act="edit-rel"]').forEach(b=>{
+    b.onclick = (ev)=>{ ev.stopPropagation(); openRelDrawer(b.dataset.id); };
+  });
+  wrap.querySelectorAll('[data-act="del-rel"]').forEach(b=>{
+    b.onclick = (ev)=>{
+      ev.stopPropagation();
+      openConfirm({
+        title:'관계 삭제',
+        body:'선택한 관계를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+        okLabel:'삭제',
+        onOk:()=>{ deleteRelationship(b.dataset.id); renderAll(); toast('관계가 삭제되었습니다.', 'success'); }
+      });
+    };
+  });
+}
+
+function renderConflicts(){
+  const wrap = document.getElementById('conflict-list');
+  const terms = AppState.glossaryStore.terms;
+  // 충돌이 있는 용어들 정리
+  const seen = new Set();
+  const conflictPairs = [];
+  terms.forEach(t=>{
+    (t.conflictsWith||[]).forEach(otherId=>{
+      const a = t.id, b = otherId;
+      const key = [a,b].sort().join('|');
+      if(seen.has(key)) return;
+      seen.add(key);
+      const tb = findTerm(b); if(!tb) return;
+      conflictPairs.push({ a:t, b:tb });
+    });
+  });
+  if(!conflictPairs.length){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = conflictPairs.map((p,i)=>`
+    <div class="conflict-banner">
+      <div class="conflict-title">⚠ 충돌 ${i+1}: '${escapeHtml(p.a.term)}' ↔ '${escapeHtml(p.b.term)}'</div>
+      <div>이유: ${p.a.term===p.b.term?'완전 일치':'동의어 중복'}</div>
+      <div style="margin-top:6px;">
+        <button class="btn btn-secondary btn-sm" data-act="merge" data-keep="${p.a.id}" data-drop="${p.b.id}">'${escapeHtml(p.a.term)}' 기준으로 통합</button>
+        <button class="btn btn-secondary btn-sm" data-act="merge" data-keep="${p.b.id}" data-drop="${p.a.id}">'${escapeHtml(p.b.term)}' 기준으로 통합</button>
+      </div>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-act="merge"]').forEach(b=>{
+    b.onclick = ()=>{
+      const keep = findTerm(b.dataset.keep), drop = findTerm(b.dataset.drop);
+      openConfirm({
+        title:'용어 통합',
+        body:`'${escapeHtml(drop.term)}' 를 '${escapeHtml(keep.term)}' 기준으로 통합합니다. 이 작업은 되돌릴 수 없습니다.`,
+        okLabel:'통합', danger:false,
+        onOk:()=>{
+          mergeTerms(b.dataset.keep, b.dataset.drop);
+          detectConflicts();
+          renderAll();
+          toast('용어가 통합되었습니다.', 'success');
+        }
+      });
+    };
+  });
+}
+
+function renderTermList(){
+  const wrap = document.getElementById('term-list');
+  const q = (document.getElementById('search-glossary').value||'').trim().toLowerCase();
+  let terms = AppState.glossaryStore.terms;
+  if(q){
+    terms = terms.filter(t=>{
+      return (t.term||'').toLowerCase().includes(q)
+          || (t.definition||'').toLowerCase().includes(q)
+          || (t.synonyms||[]).some(s=>(s||'').toLowerCase().includes(q));
+    });
+  }
+  if(!terms.length){
+    wrap.innerHTML = `
+      <div class="state-panel" style="min-height:120px;">
+        <div class="state-icon">📭</div>
+        <div class="state-desc">${q?'검색 결과가 없습니다.':'등록된 용어가 없습니다.'}</div>
+      </div>`;
+    return;
+  }
+  wrap.innerHTML = terms.map(t=>{
+    const conflictBadge = (t.conflictsWith && t.conflictsWith.length) ? '<span class="badge badge-warning">⚠ 충돌</span>' : '';
+    const statusBadge = ({
+      active:'badge-success', candidate:'badge-warning', deprecated:'badge-neutral'
+    })[t.status] || 'badge-neutral';
+    return `
+    <div class="list-item ${AppState.ui.selectedTermId===t.id?'selected':''}" data-id="${t.id}">
+      <div class="list-item-row">
+        <span>📖</span>
+        <div class="list-item-title truncate">${escapeHtml(t.term)}</div>
+        <span class="badge ${statusBadge}">${escapeHtml(t.status||'active')}</span>
+        ${conflictBadge}
+        ${t.sourceType==='llm'?'<span class="ai-badge">AI</span>':''}
+      </div>
+      <div class="list-item-desc">${escapeHtml((t.definition||'').slice(0,90))}${(t.definition||'').length>90?'…':''}</div>
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('.list-item').forEach(it=>{
+    it.onclick = ()=>{
+      AppState.ui.selectedTermId = it.dataset.id;
+      renderTermList();
+      renderTermDetail();
+    };
+  });
+}
+function renderTermDetail(){
+  const body = document.getElementById('term-detail-body');
+  const term = findTerm(AppState.ui.selectedTermId);
+  if(!term){
+    body.innerHTML = `
+      <div class="state-panel">
+        <div class="state-icon">📖</div>
+        <div class="state-title">${escapeHtml(t('termEmptyTitle'))}</div>
+        <div class="state-desc">${escapeHtml(t('termEmptyDesc'))}</div>
+      </div>`;
+    return;
+  }
+  const relatedEnts = (term.relatedEntityIds||[]).map(id=>findEntity(id)).filter(Boolean);
+  body.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px;">
+      <div>
+        <div style="font-size:18px; font-weight:700;">${escapeHtml(term.term)}</div>
+        <div class="x-small text-sec">출처: ${term.sourceType==='llm'?'LLM':'수동'} · ${escapeHtml(term.status||'active')}</div>
+      </div>
+      <div class="row-gap">
+        <button class="btn btn-secondary btn-sm" id="btn-edit-current-term">편집</button>
+        <button class="btn btn-danger btn-sm" id="btn-del-current-term">삭제</button>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-label">정의</div>
+      <div class="detail-value">${escapeHtml(term.definition||'-')}</div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-label">동의어</div>
+      <div class="detail-value">${
+        (term.synonyms && term.synonyms.length)
+          ? term.synonyms.map(s=>`<span class="tag">${escapeHtml(s)}</span>`).join(' ')
+          : '<span class="text-sec">-</span>'
+      }</div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-label">관련 엔터티</div>
+      <div class="detail-value">${
+        relatedEnts.length
+          ? relatedEnts.map(e=>`<a href="#" class="tag tag-brand" data-go-entity="${e.id}">📦 ${escapeHtml(e.name)}</a>`).join(' ')
+          : '<span class="text-sec">-</span>'
+      }</div>
+    </div>
+    ${term.note ? `
+    <div class="detail-section">
+      <div class="detail-label">비고</div>
+      <div class="detail-value">${escapeHtml(term.note)}</div>
+    </div>`:''}
+    <div class="detail-section">
+      <div class="detail-label">생성·수정</div>
+      <div class="detail-value x-small text-sec mono">created: ${escapeHtml(term.createdAt||'')}<br>updated: ${escapeHtml(term.updatedAt||'')}</div>
+    </div>`;
+  document.getElementById('btn-edit-current-term').onclick = ()=> openTermDrawer(term.id);
+  document.getElementById('btn-del-current-term').onclick = ()=>{
+    openConfirm({
+      title:'용어 삭제',
+      body:`'${escapeHtml(term.term)}' 를 삭제하시겠습니까?`,
+      okLabel:'삭제',
+      onOk:()=>{ deleteTerm(term.id); AppState.ui.selectedTermId=null; renderAll(); toast('용어가 삭제되었습니다.', 'success'); }
+    });
+  };
+  body.querySelectorAll('[data-go-entity]').forEach(a=>{
+    a.onclick = (ev)=>{
+      ev.preventDefault();
+      const eid = a.getAttribute('data-go-entity');
+      AppState.ui.selectedEntityId = eid;
+      switchTab('domain');
+    };
+  });
+}
+
+function renderReviewTable(){
+  const tbody = document.getElementById('review-tbody');
+  const q = (document.getElementById('search-review').value||'').trim().toLowerCase();
+  const pf = document.getElementById('filter-priority').value;
+  let reqs = AppState.requirements;
+  if(q) reqs = reqs.filter(r=>(JSON.stringify(r)||'').toLowerCase().includes(q));
+  if(pf) reqs = reqs.filter(r=>r.priority===pf);
+
+  document.getElementById('stat-total').textContent = AppState.requirements.length;
+  let nonstdCount = 0;
+  AppState.requirements.forEach(r=> nonstdCount += (r._nonStandardTerms||[]).length);
+  document.getElementById('stat-nonstd').textContent = nonstdCount;
+  document.getElementById('stat-entities').textContent = AppState.domainModel.entities.length;
+  document.getElementById('stat-terms').textContent = AppState.glossaryStore.terms.length;
+
+  if(!reqs.length){
+    tbody.innerHTML = `
+      <tr><td colspan="4">
+        <div class="state-panel">
+          <div class="state-icon">📭</div>
+          <div class="state-title">${escapeHtml(t('reqEmptyTitle'))}</div>
+          <div class="state-desc">${escapeHtml(t('reqEmptyDesc'))}</div>
+        </div>
+      </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = reqs.map(r=>{
+    const nonStd = r._nonStandardTerms || [];
+    const rowClass = nonStd.length ? 'nonstd-row' : '';
+    const indentPx = Math.max(0, ((r.req_level||1)-1) * 14);
+    return `
+      <tr class="${rowClass}">
+        <td><code>${escapeHtml(r.req_id||'')}</code></td>
+        <td>
+          <div style="padding-left:${indentPx}px;">
+            <strong>${escapeHtml(r.req_name||'')}</strong>
+            ${r.description ? `<div class="x-small text-sec" style="margin-top:3px;">${escapeHtml((r.description||'').slice(0,140))}${(r.description||'').length>140?'…':''}</div>`:''}
+            ${nonStd.length ? `
+              <div class="x-small" style="margin-top:6px;">
+                ${nonStd.map(m=>`
+                  <div style="margin-top:4px;">
+                    ⚠ <span class="nonstd-mark">${escapeHtml(m.term)}</span>
+                    → 표준: <strong>${escapeHtml(m.standardTerm)}</strong>
+                    <button class="btn btn-secondary btn-sm" data-act="acc-nonstd" data-id="${escapeHtml(r.req_id)}">수락</button>
+                    <button class="btn btn-ghost btn-sm" data-act="ign-nonstd" data-id="${escapeHtml(r.req_id)}">무시</button>
+                  </div>`).join('')}
+              </div>`:''}
+          </div>
+        </td>
+        <td>${r.priority?`<span class="badge ${r.priority==='MUST'?'badge-error':r.priority==='SHOULD'?'badge-warning':'badge-neutral'}">${escapeHtml(r.priority)}</span>`:''}</td>
+        <td>${r.req_status?`<span class="badge badge-info">${escapeHtml(r.req_status)}</span>`:''}</td>
+      </tr>`;
+  }).join('');
+  tbody.querySelectorAll('[data-act="acc-nonstd"]').forEach(b=>{
+    b.onclick = ()=>{
+      const r = AppState.requirements.find(x=>x.req_id===b.dataset.id);
+      if(r){ replaceNonStandardInReq(r, true); renderReviewTable(); toast('표준 용어로 교체되었습니다.', 'success'); }
+    };
+  });
+  tbody.querySelectorAll('[data-act="ign-nonstd"]').forEach(b=>{
+    b.onclick = ()=>{
+      const r = AppState.requirements.find(x=>x.req_id===b.dataset.id);
+      if(r){ r._nonStandardTerms = []; renderReviewTable(); }
+    };
+  });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   18. 드로어 — 엔터티 / 관계 / 용어 편집
+────────────────────────────────────────────────────────────────── */
+let _editingEntityId = null;
+function openEntityDrawer(id){
+  _editingEntityId = id || null;
+  const e = id ? findEntity(id) : null;
+  document.getElementById('entity-drawer-title').textContent = id ? '엔터티 편집' : '엔터티 추가';
+  document.getElementById('entity-name').value = e?.name || '';
+  document.getElementById('entity-desc').value = e?.description || '';
+  renderAttrEditor(e?.attributes || []);
+  document.getElementById('drawer-entity').classList.add('open');
+  setTimeout(()=>document.getElementById('entity-name').focus(), 50);
+}
+function renderAttrEditor(attrs){
+  const wrap = document.getElementById('entity-attrs');
+  wrap.innerHTML = `
+    <div style="display:grid; grid-template-columns:1.2fr 1fr 50px 50px 30px; gap:6px; font-size:11px; color:var(--text-sec); margin-bottom:4px;">
+      <div>속성명</div><div>타입</div><div>PK</div><div>필수</div><div></div>
+    </div>` +
+    attrs.map((a,i)=>`
+    <div class="attr-row" data-i="${i}" style="display:grid; grid-template-columns:1.2fr 1fr 50px 50px 30px; gap:6px; margin-bottom:4px;">
+      <input class="input" data-f="name" value="${escapeHtml(a.name||'')}" placeholder="name" />
+      <input class="input" data-f="type" value="${escapeHtml(a.type||'string')}" placeholder="string" />
+      <label style="display:flex; align-items:center; justify-content:center;"><input type="checkbox" data-f="isPrimaryKey" ${a.isPrimaryKey?'checked':''}/></label>
+      <label style="display:flex; align-items:center; justify-content:center;"><input type="checkbox" data-f="isRequired" ${a.isRequired?'checked':''}/></label>
+      <button class="btn btn-ghost btn-sm" data-act="rm-attr">×</button>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-act="rm-attr"]').forEach(b=>{
+    b.onclick = ()=>{
+      const i = parseInt(b.parentElement.dataset.i, 10);
+      const cur = collectAttrEditor();
+      cur.splice(i,1);
+      renderAttrEditor(cur);
+    };
+  });
+}
+function collectAttrEditor(){
+  const rows = document.querySelectorAll('#entity-attrs .attr-row');
+  return [...rows].map(row=>({
+    name: row.querySelector('[data-f="name"]').value.trim(),
+    type: row.querySelector('[data-f="type"]').value.trim() || 'string',
+    isPrimaryKey: row.querySelector('[data-f="isPrimaryKey"]').checked,
+    isRequired: row.querySelector('[data-f="isRequired"]').checked,
+  })).filter(a=>a.name);
+}
+document.getElementById('btn-add-attr').onclick = ()=>{
+  const cur = collectAttrEditor();
+  cur.push({ name:'', type:'string', isPrimaryKey:false, isRequired:false });
+  renderAttrEditor(cur);
+};
+document.getElementById('entity-save').onclick = ()=>{
+  const name = document.getElementById('entity-name').value.trim();
+  const desc = document.getElementById('entity-desc').value.trim();
+  if(!name){ toast('엔터티명은 필수입니다.', 'warning'); return; }
+  const attrs = collectAttrEditor();
+  if(_editingEntityId){
+    const e = findEntity(_editingEntityId); if(!e) return;
+    upsertEntity({ id: _editingEntityId, name, description: desc, attributes: attrs }, e.sourceType||'manual');
+  } else {
+    upsertEntity({ name, description: desc, attributes: attrs }, 'manual');
+  }
+  closeOverlay('entity');
+  renderAll();
+  toast('엔터티가 저장되었습니다.', 'success');
+};
+
+let _editingRelId = null;
+function openRelDrawer(id){
+  _editingRelId = id || null;
+  const r = id ? findRel(id) : null;
+  document.getElementById('rel-drawer-title').textContent = id ? '관계 편집' : '관계 추가';
+  // populate selects
+  const ents = AppState.domainModel.entities.filter(e=>e.status!=='rejected');
+  const opts = ents.map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
+  document.getElementById('rel-src').innerHTML = opts;
+  document.getElementById('rel-tgt').innerHTML = opts;
+  document.getElementById('rel-src').value = r?.sourceEntityId || (ents[0]?.id || '');
+  document.getElementById('rel-tgt').value = r?.targetEntityId || (ents[1]?.id || ents[0]?.id || '');
+  document.getElementById('rel-type').value = r?.relationType || 'association';
+  document.getElementById('rel-src-card').value = r?.sourceCardinality || 'one';
+  document.getElementById('rel-tgt-card').value = r?.targetCardinality || 'many';
+  document.getElementById('rel-label').value = r?.label || '';
+  document.getElementById('drawer-rel').classList.add('open');
+}
+document.getElementById('rel-save').onclick = ()=>{
+  const sId = document.getElementById('rel-src').value;
+  const tId = document.getElementById('rel-tgt').value;
+  if(!sId || !tId){ toast('소스/타겟이 필요합니다.', 'warning'); return; }
+  const payload = {
+    sourceEntityId: sId, targetEntityId: tId,
+    relationType: document.getElementById('rel-type').value,
+    sourceCardinality: document.getElementById('rel-src-card').value,
+    targetCardinality: document.getElementById('rel-tgt-card').value,
+    label: document.getElementById('rel-label').value.trim()
+  };
+  if(_editingRelId) payload.id = _editingRelId;
+  if(upsertRelationship(payload, _editingRelId?(findRel(_editingRelId)?.sourceType||'manual'):'manual')){
+    closeOverlay('rel'); renderAll(); toast('관계가 저장되었습니다.', 'success');
+  }
+};
+
+let _editingTermId = null;
+function openTermDrawer(id){
+  _editingTermId = id || null;
+  const term = id ? findTerm(id) : null;
+  document.getElementById('term-drawer-title').textContent = id ? '용어 편집' : '용어 추가';
+  document.getElementById('term-name').value = term?.term || '';
+  document.getElementById('term-def').value = term?.definition || '';
+  document.getElementById('term-syn').value = (term?.synonyms || []).join(', ');
+  // related entities select
+  const ents = AppState.domainModel.entities.filter(e=>e.status!=='rejected');
+  const sel = document.getElementById('term-related');
+  sel.innerHTML = ents.map(e=>`<option value="${e.id}" ${ (term?.relatedEntityIds||[]).includes(e.id)?'selected':''}>${escapeHtml(e.name)}</option>`).join('');
+  document.getElementById('term-note').value = term?.note || '';
+  document.getElementById('drawer-term').classList.add('open');
+}
+document.getElementById('term-save').onclick = ()=>{
+  const name = document.getElementById('term-name').value.trim();
+  const def = document.getElementById('term-def').value.trim();
+  if(!name || !def){ toast('용어명과 정의는 필수입니다.', 'warning'); return; }
+  const syn = document.getElementById('term-syn').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const sel = document.getElementById('term-related');
+  const rel = [...sel.selectedOptions].map(o=>o.value);
+  const payload = { term: name, definition: def, synonyms: syn, relatedEntityIds: rel, note: document.getElementById('term-note').value.trim() };
+  if(_editingTermId) payload.id = _editingTermId;
+  if(upsertTerm(payload, _editingTermId?(findTerm(_editingTermId)?.sourceType||'manual'):'manual')){
+    closeOverlay('term'); renderAll(); toast('용어가 저장되었습니다.', 'success');
+  }
+};
+
+/* ──────────────────────────────────────────────────────────────────
+   19. 내보내기 (TDD TC-060~062)
+────────────────────────────────────────────────────────────────── */
+function downloadFile(filename, content, mime='text/plain'){
+  const blob = new Blob([content], { type: mime + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 100);
+}
+function exportGlossaryMd(){
+  const date = new Date().toISOString().slice(0,10);
+  let md = `# 용어 사전 (Glossary)\n> 프로젝트: ${AppState.glossaryStore.metadata.projectName}\n> 생성일: ${date}\n> 총 용어 수: ${AppState.glossaryStore.terms.length}\n\n---\n\n`;
+  AppState.glossaryStore.terms.forEach(t=>{
+    const ents = (t.relatedEntityIds||[]).map(id=>findEntity(id)?.name).filter(Boolean).join(', ');
+    md += `## ${t.term}\n**정의**: ${t.definition||'-'}  \n**동의어**: ${(t.synonyms||[]).join(', ') || '-'}  \n**관련 엔터티**: ${ents || '-'}  \n**비고**: ${t.note||'-'}\n\n---\n\n`;
+  });
+  downloadFile(`glossary_${fmtDate()}.md`, md, 'text/markdown');
+  toast('용어 사전 Markdown이 다운로드되었습니다.', 'success');
+}
+function exportGlossaryCsv(){
+  const rows = [['term','definition','synonyms','related_entities','note','status','created_at']];
+  AppState.glossaryStore.terms.forEach(t=>{
+    const ents = (t.relatedEntityIds||[]).map(id=>findEntity(id)?.name).filter(Boolean).join(',');
+    rows.push([
+      t.term||'', t.definition||'',
+      (t.synonyms||[]).join(','),
+      ents, t.note||'', t.status||'', t.createdAt||''
+    ]);
+  });
+  const csv = rows.map(r=>r.map(v=>{
+    const s = String(v||'');
+    return /[,"\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(',')).join('\n');
+  downloadFile(`glossary_${fmtDate()}.csv`, csv, 'text/csv');
+  toast('용어 사전 CSV가 다운로드되었습니다.', 'success');
+}
+function exportDiagramHtml(){
+  const code = toMermaidER(AppState.domainModel);
+  const html = `<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>도메인 모델 다이어그램 - ${escapeHtml(AppState.domainModel.metadata.projectName)}</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"><\/script>
+<style>body{font-family:'Noto Sans KR',sans-serif; padding:24px; max-width:1100px; margin:0 auto;}h1{font-size:22px;}</style>
+</head><body>
+<h1>도메인 모델</h1>
+<p>생성일: ${new Date().toISOString().slice(0,10)} · 엔터티: ${AppState.domainModel.entities.length}개 · 관계: ${AppState.domainModel.relationships.length}개</p>
+<div class="mermaid">
+${code}
+</div>
+<script>mermaid.initialize({ startOnLoad: true });<\/script>
+</body></html>`;
+  downloadFile(`domain_model_${fmtDate()}.html`, html, 'text/html');
+  toast('도메인 모델 HTML이 다운로드되었습니다.', 'success');
+}
+function exportDiagramMd(){
+  const code = toMermaidER(AppState.domainModel);
+  const md = `# 도메인 모델 다이어그램
+> 프로젝트: ${AppState.domainModel.metadata.projectName}
+> 생성일: ${new Date().toISOString().slice(0,10)}
+
+\`\`\`mermaid
+${code}
+\`\`\`
+`;
+  downloadFile(`domain_model_${fmtDate()}.md`, md, 'text/markdown');
+  toast('도메인 모델 Markdown이 다운로드되었습니다.', 'success');
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   20. 전체 RENDER
+────────────────────────────────────────────────────────────────── */
+function renderAll(){
+  applyI18n();
+  renderEntityList();
+  renderRelList();
+  renderConflicts();
+  renderTermList();
+  renderTermDetail();
+  renderReviewTable();
+  renderER();
+  // 상태 바
+  document.getElementById('status-reqs').textContent = AppState.requirements.length;
+  document.getElementById('status-entities').textContent = AppState.domainModel.entities.length;
+  document.getElementById('status-rels').textContent = AppState.domainModel.relationships.length;
+  document.getElementById('status-terms').textContent = AppState.glossaryStore.terms.length;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   21. 탭 전환
+────────────────────────────────────────────────────────────────── */
+function switchTab(name){
+  AppState.ui.activeTab = name;
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.tab===name);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p=>{
+    p.classList.toggle('active', p.dataset.pane===name);
+  });
+  if(name==='domain') renderER();
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   22. 이벤트 바인딩
+────────────────────────────────────────────────────────────────── */
+function bindEvents(){
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click', ()=> switchTab(t.dataset.tab));
+  });
+  // Theme toggle
+  document.getElementById('theme-toggle').addEventListener('click', ()=>{
+    AppState.ui.theme = (AppState.ui.theme==='light') ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', AppState.ui.theme);
+    document.getElementById('theme-toggle').textContent = AppState.ui.theme==='dark' ? '🌙' : '☀';
+    saveSettings();
+    renderER();
+  });
+  // Lang toggle
+  document.getElementById('btn-lang').addEventListener('click', ()=>{
+    AppState.ui.language = AppState.ui.language==='ko' ? 'en' : 'ko';
+    saveSettings();
+    renderAll();
+  });
+  // team_id input
+  const teamIdInput = document.getElementById('team-id');
+  teamIdInput.value = AppState.llmSession.teamId || '';
+  teamIdInput.addEventListener('change', ()=>{
+    AppState.llmSession.teamId = teamIdInput.value.trim();
+    AppState.llmSession.sessionId = null; // 팀 변경 시 세션 리셋
+    setLlmStatus('대기', '');
+    saveSettings();
+  });
+  // Load file
+  document.getElementById('btn-load').addEventListener('click', ()=>{
+    document.getElementById('file-input').click();
+  });
+  document.getElementById('file-input').addEventListener('change', (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ()=> loadDevReqJson(reader.result);
+    reader.onerror = ()=> toast('파일 읽기 실패', 'error');
+    reader.readAsText(f, 'UTF-8');
+    e.target.value = '';
+  });
+  // Export dropdown
+  const expBtn = document.getElementById('btn-export');
+  const expMenu = document.getElementById('export-menu');
+  expBtn.addEventListener('click', (e)=>{ e.stopPropagation(); expMenu.classList.toggle('open'); });
+  document.addEventListener('click', ()=> expMenu.classList.remove('open'));
+  expMenu.querySelectorAll('[data-export]').forEach(it=>{
+    it.addEventListener('click', ()=>{
+      expMenu.classList.remove('open');
+      const k = it.getAttribute('data-export');
+      if(k==='glossary-md') exportGlossaryMd();
+      else if(k==='glossary-csv') exportGlossaryCsv();
+      else if(k==='diagram-html') exportDiagramHtml();
+      else if(k==='diagram-md') exportDiagramMd();
+    });
+  });
+
+  // Domain pane buttons
+  document.getElementById('btn-extract-entities').addEventListener('click', actExtractEntities);
+  document.getElementById('btn-suggest-rels').addEventListener('click', actSuggestRelationships);
+  document.getElementById('btn-review-completeness').addEventListener('click', actReviewCompleteness);
+  document.getElementById('btn-add-entity').addEventListener('click', ()=> openEntityDrawer(null));
+  document.getElementById('btn-add-rel').addEventListener('click', ()=>{
+    if(AppState.domainModel.entities.filter(e=>e.status!=='rejected').length < 2){
+      toast('관계를 만들려면 엔터티가 2개 이상 필요합니다.', 'warning'); return;
+    }
+    openRelDrawer(null);
+  });
+  document.getElementById('btn-er-refresh').addEventListener('click', renderER);
+
+  // Glossary pane buttons
+  document.getElementById('btn-generate-terms').addEventListener('click', actGenerateTerms);
+  document.getElementById('btn-detect-conflicts').addEventListener('click', ()=>{
+    const pairs = detectConflicts();
+    renderAll();
+    toast(`충돌 ${pairs.length}쌍 발견${pairs.length?'':''}`, pairs.length?'warning':'success');
+  });
+  document.getElementById('btn-add-term').addEventListener('click', ()=> openTermDrawer(null));
+  document.getElementById('search-glossary').addEventListener('input', renderTermList);
+
+  // Review pane
+  document.getElementById('btn-detect-nonstd').addEventListener('click', ()=>{
+    const c = detectNonStandardTerms();
+    renderReviewTable();
+    toast(`비표준 용어 ${c}건 탐지${c?' — 목록 확인':''}`, c?'warning':'success');
+  });
+  document.getElementById('btn-replace-all-nonstd').addEventListener('click', ()=>{
+    let cnt = 0;
+    AppState.requirements.forEach(r=>{
+      if((r._nonStandardTerms||[]).length){ replaceNonStandardInReq(r, true); cnt++; }
+    });
+    renderReviewTable();
+    toast(`${cnt}건의 요구사항이 표준 용어로 교체되었습니다.`, 'success');
+  });
+  document.getElementById('search-review').addEventListener('input', renderReviewTable);
+  document.getElementById('filter-priority').addEventListener('change', renderReviewTable);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   23. 부팅 (DOMContentLoaded)
+────────────────────────────────────────────────────────────────── */
+function bootstrap(){
+  loadSettings();
+  loadPersisted();
+  document.documentElement.setAttribute('data-theme', AppState.ui.theme);
+  document.getElementById('theme-toggle').textContent = AppState.ui.theme==='dark' ? '🌙' : '☀';
+
+  bindEvents();
+  applyI18n();
+  renderAll();
+  setLlmStatus('대기', '');
+
+  // 사용자가 team_id 입력 후 LLM 작업 시도하면 자동으로 세션 생성됨
+  // (LLM 가이드 §5.1 — 팀당 세션 1개)
+}
+
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', bootstrap);
+} else {
+  bootstrap();
+}
+</script>
+</body>
+</html>
