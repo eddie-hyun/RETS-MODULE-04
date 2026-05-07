@@ -1,0 +1,182 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rets-module04-ddd-schema",
+  "title": "RETS-MODULE-04 데이터 설계 스키마",
+  "description": "도메인 모델링 및 용어 사전 구축 도구의 내부 데이터 객체 스키마",
+  "version": "1.0.0",
+  "definitions": {
+    "Cardinality": {
+      "type": "string",
+      "enum": ["one", "many", "zero-or-one", "zero-or-many"]
+    },
+    "RelationType": {
+      "type": "string",
+      "enum": ["association", "aggregation", "composition", "inheritance", "dependency"]
+    },
+    "EntityStatus": {
+      "type": "string",
+      "enum": ["candidate", "confirmed", "rejected"]
+    },
+    "GlossaryStatus": {
+      "type": "string",
+      "enum": ["candidate", "active", "deprecated"]
+    },
+    "SourceType": {
+      "type": "string",
+      "enum": ["llm", "manual"]
+    },
+    "EntityAttribute": {
+      "type": "object",
+      "required": ["name", "type", "isPrimaryKey", "isRequired"],
+      "properties": {
+        "name":         { "type": "string", "maxLength": 100 },
+        "type":         { "type": "string" },
+        "isPrimaryKey": { "type": "boolean" },
+        "isRequired":   { "type": "boolean" },
+        "description":  { "type": "string" }
+      }
+    },
+    "Entity": {
+      "type": "object",
+      "required": ["id", "name", "description", "attributes", "sourceType", "status", "createdAt", "updatedAt"],
+      "properties": {
+        "id":                   { "type": "string", "description": "UUID" },
+        "name":                 { "type": "string", "maxLength": 100, "description": "엔터티명 (고유)" },
+        "description":          { "type": "string" },
+        "attributes":           { "type": "array", "items": { "$ref": "#/definitions/EntityAttribute" } },
+        "sourceType":           { "$ref": "#/definitions/SourceType" },
+        "status":               { "$ref": "#/definitions/EntityStatus" },
+        "linkedGlossaryTermIds":{ "type": "array", "items": { "type": "string" } },
+        "createdAt":            { "type": "string", "format": "date-time" },
+        "updatedAt":            { "type": "string", "format": "date-time" }
+      }
+    },
+    "Relationship": {
+      "type": "object",
+      "required": ["id", "sourceEntityId", "targetEntityId", "relationType", "label", "sourceCardinality", "targetCardinality", "sourceType", "status"],
+      "properties": {
+        "id":                 { "type": "string" },
+        "sourceEntityId":     { "type": "string" },
+        "targetEntityId":     { "type": "string" },
+        "relationType":       { "$ref": "#/definitions/RelationType" },
+        "label":              { "type": "string" },
+        "sourceCardinality":  { "$ref": "#/definitions/Cardinality" },
+        "targetCardinality":  { "$ref": "#/definitions/Cardinality" },
+        "sourceType":         { "$ref": "#/definitions/SourceType" },
+        "status":             { "$ref": "#/definitions/EntityStatus" },
+        "createdAt":          { "type": "string", "format": "date-time" },
+        "updatedAt":          { "type": "string", "format": "date-time" }
+      }
+    },
+    "DomainModelMetadata": {
+      "type": "object",
+      "required": ["projectName", "createdAt", "lastModifiedAt", "version"],
+      "properties": {
+        "projectName":      { "type": "string" },
+        "createdAt":        { "type": "string", "format": "date-time" },
+        "lastModifiedAt":   { "type": "string", "format": "date-time" },
+        "version":          { "type": "string" },
+        "sourceReqIds":     { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "DomainModel": {
+      "type": "object",
+      "required": ["entities", "relationships", "metadata"],
+      "properties": {
+        "entities":      { "type": "array", "items": { "$ref": "#/definitions/Entity" } },
+        "relationships": { "type": "array", "items": { "$ref": "#/definitions/Relationship" } },
+        "metadata":      { "$ref": "#/definitions/DomainModelMetadata" }
+      }
+    },
+    "GlossaryTerm": {
+      "type": "object",
+      "required": ["id", "term", "definition", "sourceType", "status", "createdAt", "updatedAt"],
+      "properties": {
+        "id":                { "type": "string" },
+        "term":              { "type": "string", "maxLength": 100, "description": "표준 용어명 (고유)" },
+        "definition":        { "type": "string" },
+        "synonyms":          { "type": "array", "items": { "type": "string" } },
+        "relatedEntityIds":  { "type": "array", "items": { "type": "string" } },
+        "sourceType":        { "$ref": "#/definitions/SourceType" },
+        "status":            { "$ref": "#/definitions/GlossaryStatus" },
+        "note":              { "type": "string" },
+        "conflictsWith":     { "type": "array", "items": { "type": "string" } },
+        "mergedFrom":        { "type": "array", "items": { "type": "string" } },
+        "createdAt":         { "type": "string", "format": "date-time" },
+        "updatedAt":         { "type": "string", "format": "date-time" }
+      }
+    },
+    "GlossaryStore": {
+      "type": "object",
+      "required": ["terms", "metadata"],
+      "properties": {
+        "terms":    { "type": "array", "items": { "$ref": "#/definitions/GlossaryTerm" } },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "totalTerms":    { "type": "integer" },
+            "lastUpdatedAt": { "type": "string", "format": "date-time" },
+            "projectName":   { "type": "string" },
+            "version":       { "type": "string" }
+          }
+        }
+      }
+    },
+    "ImprovementSuggestion": {
+      "type": "object",
+      "required": ["id", "type", "description", "status"],
+      "properties": {
+        "id":          { "type": "string" },
+        "type":        {
+          "type": "string",
+          "enum": ["missing_entity", "missing_relationship", "missing_term", "incomplete_definition"]
+        },
+        "description": { "type": "string" },
+        "suggestedData": {},
+        "status":      { "type": "string", "enum": ["pending", "accepted", "rejected"] }
+      }
+    },
+    "UserSettings": {
+      "type": "object",
+      "properties": {
+        "theme":    { "type": "string", "enum": ["light", "dark"] },
+        "language": { "type": "string", "enum": ["ko", "en"] },
+        "teamId":   { "type": "string" }
+      }
+    }
+  },
+  "schemas": {
+    "DomainModel":   { "$ref": "#/definitions/DomainModel" },
+    "GlossaryStore": { "$ref": "#/definitions/GlossaryStore" },
+    "UserSettings":  { "$ref": "#/definitions/UserSettings" }
+  },
+  "examples": {
+    "entity_sample": {
+      "id": "ent-001",
+      "name": "요구사항",
+      "description": "시스템이 수행해야 하는 기능 또는 비기능 조건",
+      "attributes": [
+        { "name": "req_id",   "type": "string",  "isPrimaryKey": true,  "isRequired": true  },
+        { "name": "req_name", "type": "string",  "isPrimaryKey": false, "isRequired": true  },
+        { "name": "priority", "type": "string",  "isPrimaryKey": false, "isRequired": false }
+      ],
+      "sourceType": "llm",
+      "status": "confirmed",
+      "linkedGlossaryTermIds": ["term-001"],
+      "createdAt": "2026-05-07T10:00:00Z",
+      "updatedAt": "2026-05-07T10:00:00Z"
+    },
+    "glossary_term_sample": {
+      "id": "term-001",
+      "term": "요구사항",
+      "definition": "소프트웨어 시스템이 달성해야 하는 기능, 성능, 제약 조건을 기술한 명세 단위",
+      "synonyms": ["소프트웨어 요구사항", "기능 명세"],
+      "relatedEntityIds": ["ent-001"],
+      "sourceType": "llm",
+      "status": "active",
+      "note": "RETS 프로젝트 핵심 도메인 개념",
+      "createdAt": "2026-05-07T10:05:00Z",
+      "updatedAt": "2026-05-07T10:05:00Z"
+    }
+  }
+}
